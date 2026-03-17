@@ -12,6 +12,7 @@ Future<void> generateInvoice({
   required int numGuests,
   required String room,
   required String packageDetails,
+  String? startMeal, // New optional parameter for starting meal
   required String totalAmount,
   required String standardDiscount,
   required String additionalDiscount,
@@ -48,6 +49,9 @@ Future<void> generateInvoice({
 
   // Calculate total extra charges
   final totalExtraCharges = extraCharges.fold(0.0, (sum, charge) => sum + charge.amount);
+
+  // Check if there is an additional discount to show
+  final bool showAdditionalDiscount = (double.tryParse(additionalDiscount.replaceAll(',', '')) ?? 0.0) > 0.0;
 
   pdf.addPage(
     pw.Page(
@@ -155,6 +159,13 @@ Future<void> generateInvoice({
                         "Package: $packageDetails",
                         style: pw.TextStyle(font: defaultFont, fontSize: 12),
                       ),
+                      // START: Display starting meal if available
+                      if (startMeal != null)
+                        pw.Text(
+                          "Starting Meal: $startMeal",
+                          style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                        ),
+                      // END: Display starting meal
                     ],
                   ),
                 ),
@@ -367,23 +378,25 @@ Future<void> generateInvoice({
                         ],
                       ),
                     ),
-                    pw.SizedBox(height: 5),
-                    pw.SizedBox(
-                      width: 200,
-                      child: pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Text(
-                            "Additional Discount:",
-                            style: pw.TextStyle(font: defaultFont, fontSize: 12),
-                          ),
-                          pw.Text(
-                            "LKR $additionalDiscount",
-                            style: pw.TextStyle(font: defaultFont, fontSize: 12, color: PdfColors.red),
-                          ),
-                        ],
+                    if (showAdditionalDiscount) ...[
+                      pw.SizedBox(height: 5),
+                      pw.SizedBox(
+                        width: 200,
+                        child: pw.Row(
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                          children: [
+                            pw.Text(
+                              "Additional Discount:",
+                              style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                            ),
+                            pw.Text(
+                              "LKR $additionalDiscount",
+                              style: pw.TextStyle(font: defaultFont, fontSize: 12, color: PdfColors.red),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                     pw.SizedBox(height: 5),
                     if (totalExtraCharges > 0)
                       pw.SizedBox(
@@ -583,3 +596,4 @@ class ExtraCharge {
 
   ExtraCharge({required this.reason, required this.amount});
 }
+

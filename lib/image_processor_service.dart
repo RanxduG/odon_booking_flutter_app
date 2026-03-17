@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 class ImageProcessorService {
-  static const String _geminiApiKey = 'AIzaSyBj3LrgKOM8dmQqu9SWeiqmj2CUjG-tmSM'; // Replace with your actual API key
+  static const String _geminiApiKey = 'AIzaSyBV9XpOU9ndyZFLuGfwMr6b3kx3Cst2NSo'; // Replace with your actual API key
   static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
   final ImagePicker _picker = ImagePicker();

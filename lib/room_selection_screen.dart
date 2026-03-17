@@ -173,6 +173,21 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     Map<String, int> itemsToSubtract = {};
 
     switch (_roomType) {
+      case 'Single':
+        itemsToSubtract = {
+          'soap': 1,
+          'conditioner': 1,
+          'body lotion': 1,
+          'shampoo': 1,
+          'shower gel': 1,
+          'dental kit': 1,
+          'white sugar sachets': 2,
+          'milk creamer sachets': 2,
+          'black tea sachets': 2,
+          'nescafe sachet': 2,
+
+        };
+        break;
       case 'Double':
         itemsToSubtract = {
           'soap': 1,
@@ -180,7 +195,12 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           'body lotion': 1,
           'shampoo': 1,
           'shower gel': 1,
-          'brush kit': 1,
+          'dental kit': 1,
+          'white sugar sachets': 2,
+          'milk creamer sachets': 2,
+          'black tea sachets': 2,
+          'nescafe sachet': 2,
+
         };
         break;
       case 'Triple':
@@ -190,7 +210,11 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           'body lotion': 1,
           'shampoo': 1,
           'shower gel': 1,
-          'brush kit': 1,
+          'dental kit': 2,
+          'white sugar sachets': 3,
+          'milk creamer sachets': 3,
+          'black tea sachets': 3,
+          'nescafe sachet': 3,
         };
         break;
       case 'Family':
@@ -200,7 +224,11 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           'body lotion': 1,
           'shampoo': 1,
           'shower gel': 1,
-          'brush kit': 2,
+          'dental kit': 2,
+          'white sugar sachets': 4,
+          'milk creamer sachets': 4,
+          'black tea sachets': 4,
+          'nescafe sachet': 4,
         };
         break;
       case 'Family Plus':
@@ -210,7 +238,11 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           'body lotion': 1,
           'shampoo': 1,
           'shower gel': 1,
-          'brush kit': 2,
+          'dental kit': 2,
+          'white sugar sachets': 5,
+          'milk creamer sachets': 5,
+          'black tea sachets': 5,
+          'nescafe sachet': 5,
         };
         break;
       default:
@@ -222,9 +254,15 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           'shampoo': 0,
           'shower gel': 0,
           'brush kit': 0,
+          'dental kit': 0,
+          'white sugar sachets': 0,
+          'milk creamer sachets': 0,
+          'black tea sachets': 0,
+          'nescafe sachet': 0,
         };
         break;
     }
+
 
     bool hasInventoryIssue = false;
 
@@ -416,7 +454,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
               _buildDropdownContainer(
                 label: 'Select Room Type',
                 value: _roomType,
-                items: ['Family', 'Family Plus', 'Triple', 'Double'],
+                items: ['Family', 'Family Plus', 'Triple', 'Double','Single'],
                 onChanged: (value) {
                   setState(() {
                     _roomType = value;

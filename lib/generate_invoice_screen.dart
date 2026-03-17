@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'invoice.dart' as invoice;
@@ -42,10 +41,12 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     _advanceAmountController.dispose();
     super.dispose();
   }
+
   DateTime? _checkInDate;
   DateTime? _checkOutDate;
 
   String _packageType = 'Full Board';
+  String _startMeal = 'Lunch'; // To track starting meal for FB/HB
   bool _customizePackages = false;
   List<String> _dayPackages = [];
   double _totalAmount = 0.0;
@@ -61,42 +62,49 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   // Multiple rooms selection
   List<Room> _selectedRooms = [];
 
-  // 2025 Room prices
+  // October updated prices Room prices
+
   Map<String, Map<String, double>> _roomPrices = {
     'Full Board': {
-      'Double': 20500.0,
-      'Triple': 26250.0,
-      'Family': 32000.0,
-      'Family Plus': 37750.0,
+      'Single': 15250.0,
+      'Double': 22500.0,
+      'Triple': 28750.0,
+      'Family': 35000.0,
+      'Family Plus': 42250.0,
     },
     'Half Board': {
-      'Double': 17000.0,
-      'Triple': 21000.0,
-      'Family': 25000.0,
-      'Family Plus': 29000.0,
+      'Single': 13250.0,
+      'Double': 18500.0,
+      'Triple': 22750.0,
+      'Family': 27000.0,
+      'Family Plus': 32250.0,
     },
     'Bed and Breakfast': {
-      'Double': 13500.0,
-      'Triple': 15750.0,
-      'Family': 18000.0,
-      'Family Plus': 20250.0,
+      'Single': 11250.0,
+      'Double': 14500.0,
+      'Triple': 16750.0,
+      'Family': 19000.0,
+      'Family Plus': 22250.0,
     },
     'Room Only': {
-      'Double': 11000.0,
-      'Triple': 12000.0,
-      'Family': 13000.0,
-      'Family Plus': 14000.0,
+      'Single': 10000.0,
+      'Double': 12000.0,
+      'Triple': 13000.0,
+      'Family': 14000.0,
+      'Family Plus': 16000.0,
     },
     'Room + Dinner': {
-      'Double': 11000.0 + (1750.0 * 2),
-      'Triple': 12000.0 + (1750.0 * 3),
-      'Family': 13000.0 + (1750.0 * 4),
-      'Family Plus': 14000.0 + (1750.0 * 5),
+      'Single': 10000.0 + (2000.0 * 2),
+      'Double': 11000.0 + (2000.0 * 2),
+      'Triple': 12000.0 + (2000.0 * 3),
+      'Family': 13000.0 + (2000.0 * 4),
+      'Family Plus': 14000.0 + (2000.0 * 5),
     },
   };
 
   // Room capacity
   Map<String, int> _roomCapacity = {
+    'Single': 1,
     'Double': 2,
     'Triple': 3,
     'Family': 4,
@@ -124,7 +132,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
   // Driver room total calculation
   double get _driverRoomTotal {
-    if (!_includeDriverRoom || _checkInDate == null || _checkOutDate == null) return 0.0;
+    if (!_includeDriverRoom || _checkInDate == null || _checkOutDate == null)
+      return 0.0;
     int nights = _checkOutDate!.difference(_checkInDate!).inDays;
     return DRIVER_ROOM_PRICE * nights;
   }
@@ -166,13 +175,16 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
         for (int i = 0; i < days; i++) {
           if (i < _dayPackages.length) {
             String package = _dayPackages[i];
-            roomTotal += (_roomPrices[package]?[room.type] ?? 0.0) * room.quantity;
+            roomTotal +=
+                (_roomPrices[package]?[room.type] ?? 0.0) * room.quantity;
           } else {
-            roomTotal += (_roomPrices[_packageType]?[room.type] ?? 0.0) * room.quantity;
+            roomTotal +=
+                (_roomPrices[_packageType]?[room.type] ?? 0.0) * room.quantity;
           }
         }
       } else {
-        roomTotal += days * (_roomPrices[_packageType]?[room.type] ?? 0.0) * room.quantity;
+        roomTotal += days * (_roomPrices[_packageType]?[room.type] ?? 0.0) *
+            room.quantity;
       }
     }
 
@@ -186,13 +198,15 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     _discount = _discountPerRoom * _totalRoomNights;
 
     // Add additional discount if any
-    _additionalDiscount = double.tryParse(_additionalDiscountController.text) ?? 0.0;
+    _additionalDiscount =
+        double.tryParse(_additionalDiscountController.text) ?? 0.0;
 
     // Add extra charges
     double extraChargesTotal = _totalExtraCharges;
 
     setState(() {
-      _totalAmount = subtotal - _discount - _additionalDiscount + extraChargesTotal;
+      _totalAmount =
+          subtotal - _discount - _additionalDiscount + extraChargesTotal;
     });
   }
 
@@ -271,7 +285,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   Future<void> _selectDate(BuildContext context, bool isCheckIn) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: isCheckIn ? (DateTime.now()) : (_checkInDate ?? DateTime.now().add(Duration(days: 1))),
+      initialDate: isCheckIn ? (DateTime.now()) : (_checkInDate ??
+          DateTime.now().add(Duration(days: 1))),
       firstDate: DateTime(2000), // Allows selection from the year 2000 onwards
       lastDate: DateTime(2100),
     );
@@ -284,7 +299,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
           // Automatically set check-out date to the next day
           _checkOutDate = _checkInDate!.add(Duration(days: 1));
-          _checkOutController.text = DateFormat('yyyy-MM-dd').format(_checkOutDate!);
+          _checkOutController.text =
+              DateFormat('yyyy-MM-dd').format(_checkOutDate!);
         } else {
           _checkOutDate = picked;
           _checkOutController.text = DateFormat('yyyy-MM-dd').format(picked);
@@ -415,10 +431,12 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                               decoration: InputDecoration(
                                 labelText: 'Room Type',
                                 border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                               ),
                               value: _selectedRooms[index].type,
                               items: [
+                                'Single',
                                 'Double',
                                 'Triple',
                                 'Family',
@@ -451,7 +469,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                                 ),
                                 Container(
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[300]!),
+                                    border: Border.all(
+                                        color: Colors.grey[300]!),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -459,13 +478,18 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                                     children: [
                                       IconButton(
                                         icon: Icon(Icons.remove),
-                                        onPressed: _selectedRooms[index].quantity > 1
-                                            ? () => _updateRoomQuantity(index, _selectedRooms[index].quantity - 1)
+                                        onPressed: _selectedRooms[index]
+                                            .quantity > 1
+                                            ? () =>
+                                            _updateRoomQuantity(index,
+                                            _selectedRooms[index].quantity - 1)
                                             : null,
-                                        constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                                        constraints: BoxConstraints(
+                                            minWidth: 40, minHeight: 40),
                                       ),
                                       Container(
-                                        constraints: BoxConstraints(minWidth: 40),
+                                        constraints: BoxConstraints(
+                                            minWidth: 40),
                                         child: Text(
                                           '${_selectedRooms[index].quantity}',
                                           textAlign: TextAlign.center,
@@ -477,8 +501,12 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                                       ),
                                       IconButton(
                                         icon: Icon(Icons.add),
-                                        onPressed: () => _updateRoomQuantity(index, _selectedRooms[index].quantity + 1),
-                                        constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                                        onPressed: () =>
+                                            _updateRoomQuantity(
+                                            index,
+                                            _selectedRooms[index].quantity + 1),
+                                        constraints: BoxConstraints(
+                                            minWidth: 40, minHeight: 40),
                                       ),
                                     ],
                                   ),
@@ -506,7 +534,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
                 // Driver Room Option
                 CheckboxListTile(
-                  title: Text('Include Driver Room (LKR ${DRIVER_ROOM_PRICE.toStringAsFixed(2)}/night)'),
+                  title: Text('Include Driver Room (LKR ${DRIVER_ROOM_PRICE
+                      .toStringAsFixed(2)}/night)'),
                   value: _includeDriverRoom,
                   onChanged: (bool? value) {
                     setState(() {
@@ -546,6 +575,50 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                     });
                   },
                 ),
+
+                // START: New Starting Meal Selection
+                if (_packageType == 'Full Board' ||
+                    _packageType == 'Half Board')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Starting Meal:', style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w500)),
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: const Text('Lunch'),
+                                value: 'Lunch',
+                                groupValue: _startMeal,
+                                onChanged: (String? value) {
+                                  setState(() {
+                                    _startMeal = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: const Text('Dinner'),
+                                value: 'Dinner',
+                                groupValue: _startMeal,
+                                onChanged: (String? value) {
+                                  setState(() {
+                                    _startMeal = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                // END: New Starting Meal Selection
+
                 SizedBox(height: 16),
 
                 // Custom Package Option
@@ -563,7 +636,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                 ),
 
                 // Day-by-day package selection (only shown if customize is checked)
-                if (_customizePackages && _checkInDate != null && _checkOutDate != null)
+                if (_customizePackages && _checkInDate != null &&
+                    _checkOutDate != null)
                   _buildDayPackageOptions(),
 
                 SizedBox(height: 16),
@@ -597,7 +671,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                                   border: OutlineInputBorder(),
                                   hintText: 'e.g., Airport Transfer',
                                 ),
-                                onChanged: (value) => _updateExtraChargeReason(index, value),
+                                onChanged: (value) =>
+                                    _updateExtraChargeReason(index, value),
                               ),
                             ),
                             SizedBox(width: 8),
@@ -612,7 +687,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                                   labelText: 'Amount (LKR)',
                                   border: OutlineInputBorder(),
                                 ),
-                                onChanged: (value) => _updateExtraChargeAmount(index, value),
+                                onChanged: (value) =>
+                                    _updateExtraChargeAmount(index, value),
                               ),
                             ),
                             IconButton(
@@ -661,7 +737,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                     labelText: 'Advance Payment (LKR)',
                     border: OutlineInputBorder(),
                   ),
-                  onChanged: (_) => setState(() {}), // Just to refresh UI when value changes
+                  onChanged: (_) =>
+                      setState(() {}), // Just to refresh UI when value changes
                 ),
 
                 SizedBox(height: 16),
@@ -690,18 +767,23 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Summary:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text('Summary:', style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                       SizedBox(height: 8),
                       if (_checkInDate != null && _checkOutDate != null) ...[
-                        Text('Duration: ${_checkOutDate!.difference(_checkInDate!).inDays} nights'),
+                        Text('Duration: ${_checkOutDate!.difference(
+                            _checkInDate!).inDays} nights'),
                         SizedBox(height: 8),
 
                         // Room details
-                        Text('Rooms:', style: TextStyle(fontWeight: FontWeight.w500)),
-                        ..._selectedRooms.map((room) => Padding(
-                          padding: EdgeInsets.only(left: 16),
-                          child: Text('${room.quantity}x ${room.type} Room'),
-                        )).toList(),
+                        Text('Rooms:', style: TextStyle(
+                            fontWeight: FontWeight.w500)),
+                        ..._selectedRooms.map((room) =>
+                            Padding(
+                              padding: EdgeInsets.only(left: 16),
+                              child: Text(
+                                  '${room.quantity}x ${room.type} Room'),
+                            )).toList(),
 
                         if (_includeDriverRoom)
                           Padding(
@@ -711,52 +793,75 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
                         SizedBox(height: 8),
                         Text('Total Guests: $_totalGuests'),
-                        Text('Package: ${_customizePackages ? "Custom Package" : _packageType}'),
+                        Text('Package: ${_customizePackages
+                            ? "Custom Package"
+                            : _packageType}'),
+                        if (!_customizePackages &&
+                            (_packageType == 'Full Board' ||
+                                _packageType == 'Half Board'))
+                          Text('Starting Meal: $_startMeal'),
 
                         // Extra charges
-                        if (_extraCharges.any((charge) => charge.reason.isNotEmpty && charge.amount > 0)) ...[
+                        if (_extraCharges.any((charge) =>
+                        charge.reason.isNotEmpty && charge.amount > 0)) ...[
                           SizedBox(height: 8),
-                          Text('Extra Charges:', style: TextStyle(fontWeight: FontWeight.w500)),
+                          Text('Extra Charges:',
+                              style: TextStyle(fontWeight: FontWeight.w500)),
                           ..._extraCharges
-                              .where((charge) => charge.reason.isNotEmpty && charge.amount > 0)
-                              .map((charge) => Padding(
-                            padding: EdgeInsets.only(left: 16),
-                            child: Text('${charge.reason}: LKR ${NumberFormat('#,##0.00').format(charge.amount)}'),
-                          )).toList(),
+                              .where((charge) =>
+                          charge.reason.isNotEmpty && charge.amount > 0)
+                              .map((charge) =>
+                              Padding(
+                                padding: EdgeInsets.only(left: 16),
+                                child: Text(
+                                    '${charge.reason}: LKR ${NumberFormat(
+                                        '#,##0.00').format(charge.amount)}'),
+                              )).toList(),
                         ],
 
                         SizedBox(height: 8),
 
                         // Financial breakdown
-                        Text('Subtotal: LKR ${NumberFormat('#,##0.00').format(_totalAmount + _discount + _additionalDiscount - _totalExtraCharges)}',
+                        Text('Subtotal: LKR ${NumberFormat('#,##0.00').format(
+                            _totalAmount + _discount + _additionalDiscount -
+                                _totalExtraCharges)}',
                             style: TextStyle(fontWeight: FontWeight.w500)),
 
                         if (_discount > 0)
-                          Text('Standard Discount: LKR ${NumberFormat('#,##0.00').format(_discount)}',
+                          Text('Standard Discount: LKR ${NumberFormat(
+                              '#,##0.00').format(_discount)}',
                               style: TextStyle(color: Colors.red)),
 
                         if (_additionalDiscount > 0)
-                          Text('Additional Discount: LKR ${NumberFormat('#,##0.00').format(_additionalDiscount)}',
+                          Text('Additional Discount: LKR ${NumberFormat(
+                              '#,##0.00').format(_additionalDiscount)}',
                               style: TextStyle(color: Colors.red)),
 
                         if (_totalExtraCharges > 0)
-                          Text('Extra Charges: LKR ${NumberFormat('#,##0.00').format(_totalExtraCharges)}',
+                          Text('Extra Charges: LKR ${NumberFormat('#,##0.00')
+                              .format(_totalExtraCharges)}',
                               style: TextStyle(color: Colors.blue)),
 
                         Divider(),
-                        Text('Total Amount: LKR ${NumberFormat('#,##0.00').format(_totalAmount)}',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                        Text('Total Amount: LKR ${NumberFormat('#,##0.00')
+                            .format(_totalAmount)}',
+                            style: TextStyle(fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.indigo)),
 
                         if (_advanceAmount > 0) ...[
-                          Text('Advance Paid: LKR ${NumberFormat('#,##0.00').format(_advanceAmount)}',
+                          Text('Advance Paid: LKR ${NumberFormat('#,##0.00')
+                              .format(_advanceAmount)}',
                               style: TextStyle(color: Colors.green)),
-                          Text('Balance: LKR ${NumberFormat('#,##0.00').format(_remainingBalance)}',
+                          Text('Balance: LKR ${NumberFormat('#,##0.00').format(
+                              _remainingBalance)}',
                               style: TextStyle(fontWeight: FontWeight.w500)),
                         ],
 
                         if (_specialNotesController.text.isNotEmpty) ...[
                           SizedBox(height: 8),
-                          Text('Special Notes:', style: TextStyle(fontWeight: FontWeight.w500)),
+                          Text('Special Notes:',
+                              style: TextStyle(fontWeight: FontWeight.w500)),
                           Padding(
                             padding: EdgeInsets.only(left: 16),
                             child: Text(_specialNotesController.text),
@@ -779,9 +884,11 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.indigo,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 16),
                     ),
-                    child: Text('Generate Invoice', style: TextStyle(fontSize: 16)),
+                    child: Text(
+                        'Generate Invoice', style: TextStyle(fontSize: 16)),
                   ),
                 ),
               ],
@@ -815,7 +922,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
               SizedBox(width: 24),
               Expanded(
                 flex: 3,
-                child: Text('Day ${i+1} - $dayString:', style: TextStyle(fontWeight: FontWeight.w500)),
+                child: Text('Day ${i + 1} - $dayString:',
+                    style: TextStyle(fontWeight: FontWeight.w500)),
               ),
               Expanded(
                 flex: 7,
@@ -872,6 +980,13 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       roomDetails += ", 1x Driver Room";
     }
 
+    // Determine if start meal should be passed
+    String? startMealForInvoice;
+    if (!_customizePackages &&
+        (_packageType == 'Full Board' || _packageType == 'Half Board')) {
+      startMealForInvoice = _startMeal;
+    }
+
     // Calculate price breakdown by room type and package
     Map<String, Map<String, dynamic>> priceBreakdown = {};
 
@@ -916,7 +1031,6 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     }
 
 
-
     // Prepare standard fixed notes and combine with user's special notes
     String fixedNotes = """• Once you arrive to check in, please produce the NIC of the person under whose name the booking was made.
 • If you need a driver's room, please inform on the same day you make the reservation
@@ -937,13 +1051,16 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       numGuests: _totalGuests,
       room: roomDetails,
       packageDetails: packageDetails,
+      startMeal: startMealForInvoice,
+      // Pass the selected start meal
       totalAmount: NumberFormat('#,##0.00').format(
           _totalAmount + _discount + _additionalDiscount - _totalExtraCharges),
       standardDiscount: NumberFormat('#,##0.00').format(_discount),
       additionalDiscount: NumberFormat('#,##0.00').format(_additionalDiscount),
       extraCharges: _extraCharges
           .where((charge) => charge.reason.isNotEmpty && charge.amount > 0)
-          .map((charge) => invoice.ExtraCharge(reason: charge.reason, amount: charge.amount))
+          .map((charge) =>
+          invoice.ExtraCharge(reason: charge.reason, amount: charge.amount))
           .toList(),
       finalAmount: NumberFormat('#,##0.00').format(_totalAmount),
       advanceAmount: NumberFormat('#,##0.00').format(_advanceAmount),
@@ -962,3 +1079,4 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
 
 }
+

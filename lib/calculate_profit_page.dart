@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'api_service.dart';
-import 'ai_insights_page.dart'; // Import the new AI insights page
+import 'ai_insights_page.dart';
 
 class CalculateProfitPage extends StatefulWidget {
   @override
@@ -10,10 +9,11 @@ class CalculateProfitPage extends StatefulWidget {
 }
 
 class _CalculateProfitPageState extends State<CalculateProfitPage> {
-  DateTime _selectedMonth = DateTime.now();
-  List<Map<String, dynamic>> _bookingsForSelectedMonth = [];
-  List<Map<String, dynamic>> _expensesForSelectedMonth = [];
-  List<Map<String, dynamic>> _salariesForSelectedMonth = [];
+  DateTime _startDate = DateTime.now().subtract(Duration(days: 7));
+  DateTime _endDate = DateTime.now();
+  List<Map<String, dynamic>> _bookingsForSelectedRange = [];
+  List<Map<String, dynamic>> _expensesForSelectedRange = [];
+  List<Map<String, dynamic>> _salariesForSelectedRange = [];
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
@@ -32,37 +32,62 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
   @override
   void initState() {
     super.initState();
-    _fetchAllDataForMonth(_selectedMonth);
+    _fetchAllDataForDateRange(_startDate, _endDate);
   }
 
-  Future<void> _fetchAllDataForMonth(DateTime month) async {
+  Future<void> _fetchAllDataForDateRange(DateTime start, DateTime end) async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Fetch all data in parallel
-      final futures = await Future.wait([
-        _apiService.fetchBookingsForMonth(month),
-        _apiService.fetchExpensesForMonth(month),
-        _apiService.fetchSalariesForMonth(month),
-      ]);
+      // Get all unique months in the date range
+      List<DateTime> monthsToFetch = _getMonthsInRange(start, end);
 
-      print(futures[1]);
-      print(futures[2]);
+      List<Map<String, dynamic>> allBookings = [];
+      List<Map<String, dynamic>> allExpenses = [];
+      List<Map<String, dynamic>> allSalaries = [];
 
-      final bookings = futures[0] as List<Map<String, dynamic>>;
-      final expenses = futures[1] as List<Map<String, dynamic>>;
-      final salaries = futures[2] as List<Map<String, dynamic>>;
+      // Fetch data for each month in the range
+      for (DateTime month in monthsToFetch) {
+        final futures = await Future.wait([
+          _apiService.fetchBookingsForMonth(month),
+          _apiService.fetchExpensesForMonth(month),
+          _apiService.fetchSalariesForMonth(month),
+        ]);
+
+        allBookings.addAll(futures[0] as List<Map<String, dynamic>>);
+        allExpenses.addAll(futures[1] as List<Map<String, dynamic>>);
+        allSalaries.addAll(futures[2] as List<Map<String, dynamic>>);
+      }
 
       setState(() {
-        _bookingsForSelectedMonth = bookings.where((booking) {
+        // Filter bookings by check-in date within range
+        _bookingsForSelectedRange = allBookings.where((booking) {
           final checkInDate = DateTime.parse(booking['checkIn']);
-          return checkInDate.year == month.year && checkInDate.month == month.month;
+          return checkInDate.isAfter(start.subtract(Duration(days: 1))) &&
+              checkInDate.isBefore(end.add(Duration(days: 1)));
         }).toList();
 
-        _expensesForSelectedMonth = expenses;
-        _salariesForSelectedMonth = salaries;
+        // Filter expenses by date within range
+        _expensesForSelectedRange = allExpenses.where((expense) {
+          if (expense['date'] != null) {
+            final expenseDate = DateTime.parse(expense['date']);
+            return expenseDate.isAfter(start.subtract(Duration(days: 1))) &&
+                expenseDate.isBefore(end.add(Duration(days: 1)));
+          }
+          return false;
+        }).toList();
+
+        // Filter salaries by date within range
+        _salariesForSelectedRange = allSalaries.where((salary) {
+          if (salary['date'] != null) {
+            final salaryDate = DateTime.parse(salary['date']);
+            return salaryDate.isAfter(start.subtract(Duration(days: 1))) &&
+                salaryDate.isBefore(end.add(Duration(days: 1)));
+          }
+          return false;
+        }).toList();
 
         _calculateTotals();
         _isLoading = false;
@@ -78,6 +103,19 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
     }
   }
 
+  List<DateTime> _getMonthsInRange(DateTime start, DateTime end) {
+    List<DateTime> months = [];
+    DateTime current = DateTime(start.year, start.month, 1);
+    DateTime endMonth = DateTime(end.year, end.month, 1);
+
+    while (current.isBefore(endMonth) || current.isAtSameMomentAs(endMonth)) {
+      months.add(current);
+      current = DateTime(current.year, current.month + 1, 1);
+    }
+
+    return months;
+  }
+
   void _calculateTotals() {
     // Reset totals
     totalRevenue = 0.0;
@@ -89,7 +127,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
     totalSalaries = 0.0;
 
     // Calculate revenue totals
-    for (var booking in _bookingsForSelectedMonth) {
+    for (var booking in _bookingsForSelectedRange) {
       double total = double.tryParse(booking['total'].toString()) ?? 0.0;
       double advance = double.tryParse(booking['advance'].toString()) ?? 0.0;
       String? balanceMethod = booking['balanceMethod'];
@@ -106,13 +144,13 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
     }
 
     // Calculate expense totals
-    for (var expense in _expensesForSelectedMonth) {
+    for (var expense in _expensesForSelectedRange) {
       double amount = double.tryParse(expense['amount'].toString()) ?? 0.0;
       totalExpenses += amount;
     }
 
     // Calculate salary totals
-    for (var salary in _salariesForSelectedMonth) {
+    for (var salary in _salariesForSelectedRange) {
       double amount = double.tryParse(salary['amount'].toString()) ?? 0.0;
       totalSalaries += amount;
     }
@@ -121,31 +159,46 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
     totalProfit = totalRevenue - totalExpenses - totalSalaries;
   }
 
-  void _selectMonth(BuildContext context) {
-    showMonthPicker(
+  Future<void> _selectDateRange(BuildContext context) async {
+    final DateTimeRange? picked = await showDateRangePicker(
       context: context,
-      initialDate: _selectedMonth,
-    ).then((selectedMonth) {
-      if (selectedMonth != null) {
-        setState(() {
-          _selectedMonth = selectedMonth;
-        });
-        _fetchAllDataForMonth(selectedMonth);
-      }
-    });
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.indigo,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+      _fetchAllDataForDateRange(_startDate, _endDate);
+    }
   }
 
   void _navigateToAIInsights() {
-    // Ensure we pass valid data to AI insights
-    final safeBookings = _bookingsForSelectedMonth.isNotEmpty ? _bookingsForSelectedMonth : <Map<String, dynamic>>[];
-    final safeExpenses = _expensesForSelectedMonth.isNotEmpty ? _expensesForSelectedMonth : <Map<String, dynamic>>[];
-    final safeSalaries = _salariesForSelectedMonth.isNotEmpty ? _salariesForSelectedMonth : <Map<String, dynamic>>[];
+    final safeBookings = _bookingsForSelectedRange.isNotEmpty ? _bookingsForSelectedRange : <Map<String, dynamic>>[];
+    final safeExpenses = _expensesForSelectedRange.isNotEmpty ? _expensesForSelectedRange : <Map<String, dynamic>>[];
+    final safeSalaries = _salariesForSelectedRange.isNotEmpty ? _salariesForSelectedRange : <Map<String, dynamic>>[];
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AiInsightsPage(
-          selectedMonth: _selectedMonth,
+          selectedMonth: _startDate, // You might want to adjust this in AiInsightsPage
           totalRevenue: totalRevenue,
           totalExpenses: totalExpenses,
           totalSalaries: totalSalaries,
@@ -158,6 +211,16 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
     );
   }
 
+  String _formatDateRange() {
+    final startFormatted = "${_startDate.day}/${_startDate.month}/${_startDate.year}";
+    final endFormatted = "${_endDate.day}/${_endDate.month}/${_endDate.year}";
+    return "$startFormatted - $endFormatted";
+  }
+
+  int _getDaysDifference() {
+    return _endDate.difference(_startDate).inDays + 1;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,8 +231,8 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
         backgroundColor: Colors.indigo,
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_today, color: Colors.white),
-            onPressed: () => _selectMonth(context),
+            icon: const Icon(Icons.date_range, color: Colors.white),
+            onPressed: () => _selectDateRange(context),
           ),
         ],
         iconTheme: IconThemeData(color: Colors.white),
@@ -181,28 +244,45 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Selected Month Display
+            // Selected Date Range Display
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.indigoAccent,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  Text(
-                    "📅 ${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}",
-                    style: GoogleFonts.montserrat(
-                        fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => _selectMonth(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text("Change", style: TextStyle(color: Colors.indigo)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "📅 ${_formatDateRange()}",
+                              style: GoogleFonts.montserrat(
+                                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "${_getDaysDifference()} day${_getDaysDifference() > 1 ? 's' : ''}",
+                              style: GoogleFonts.montserrat(
+                                  fontSize: 12, color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _selectDateRange(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text("Change", style: TextStyle(color: Colors.indigo)),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -301,7 +381,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
             ),
             const SizedBox(height: 20),
 
-            // AI Insights Button - NEW ADDITION
+            // AI Insights Button
             Container(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -337,9 +417,9 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
                     unselectedLabelColor: Colors.grey,
                     indicatorColor: Colors.indigo,
                     tabs: [
-                      Tab(text: "Bookings (${_bookingsForSelectedMonth.length})"),
-                      Tab(text: "Expenses (${_expensesForSelectedMonth.length})"),
-                      Tab(text: "Salaries (${_salariesForSelectedMonth.length})"),
+                      Tab(text: "Bookings (${_bookingsForSelectedRange.length})"),
+                      Tab(text: "Expenses (${_expensesForSelectedRange.length})"),
+                      Tab(text: "Salaries (${_salariesForSelectedRange.length})"),
                     ],
                   ),
                   Container(
@@ -389,7 +469,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
   }
 
   Widget _buildBookingsList() {
-    if (_bookingsForSelectedMonth.isEmpty) {
+    if (_bookingsForSelectedRange.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -403,16 +483,16 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
 
     return ListView.builder(
       padding: EdgeInsets.all(8),
-      itemCount: _bookingsForSelectedMonth.length,
+      itemCount: _bookingsForSelectedRange.length,
       itemBuilder: (context, index) {
-        final booking = _bookingsForSelectedMonth[index];
+        final booking = _bookingsForSelectedRange[index];
         return _buildBookingCard(booking);
       },
     );
   }
 
   Widget _buildExpensesList() {
-    if (_expensesForSelectedMonth.isEmpty) {
+    if (_expensesForSelectedRange.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -426,9 +506,9 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
 
     return ListView.builder(
       padding: EdgeInsets.all(8),
-      itemCount: _expensesForSelectedMonth.length,
+      itemCount: _expensesForSelectedRange.length,
       itemBuilder: (context, index) {
-        final expense = _expensesForSelectedMonth[index];
+        final expense = _expensesForSelectedRange[index];
         return Card(
           elevation: 2,
           margin: EdgeInsets.symmetric(vertical: 4),
@@ -450,7 +530,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
   }
 
   Widget _buildSalariesList() {
-    if (_salariesForSelectedMonth.isEmpty) {
+    if (_salariesForSelectedRange.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -464,9 +544,9 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
 
     return ListView.builder(
       padding: EdgeInsets.all(8),
-      itemCount: _salariesForSelectedMonth.length,
+      itemCount: _salariesForSelectedRange.length,
       itemBuilder: (context, index) {
-        final salary = _salariesForSelectedMonth[index];
+        final salary = _salariesForSelectedRange[index];
         return Card(
           elevation: 2,
           margin: EdgeInsets.symmetric(vertical: 4),
