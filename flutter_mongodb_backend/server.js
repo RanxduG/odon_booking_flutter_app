@@ -151,7 +151,7 @@ app.listen(port, "0.0.0.0",() => {
 });
 
 app.get('/', (req, res) => {
-    res.send('🟢 Server is running!');
+    res.send('🟢 Server is running boii!');
 });
 
 //////Run server on localhost
