@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
 
-  final String baseUrl = 'http://15.207.116.36:3000';
+  final String baseUrl = 'https://odonbookingflutterapp-production.up.railway.app';
   //final String baseUrl = 'http://192.168.1.26:3000';
 
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
