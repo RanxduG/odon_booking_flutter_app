@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'file_saver.dart';
 
+//PUT TO DEV FIRST
 Future<void> generateInvoice({
   required String guestName,
   String? guestPhone,
@@ -176,7 +177,10 @@ Future<void> generateInvoice({
                       pw.SizedBox(height: 4),
                       pw.Text(
                         "* Extra hour charge: LKR 1,000 per hour",
-                        style: pw.TextStyle(font: italicFont, fontSize: 10, color: PdfColors.red),
+                        style: pw.TextStyle(
+                            font: italicFont,
+                            fontSize: 10,
+                            color: PdfColors.red),
                       ),
                     ],
                   ),
