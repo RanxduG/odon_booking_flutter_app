@@ -12,7 +12,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   DateTime? _checkOutDate;
   String? _roomType;
   String? _packageType;
-
+  final TextEditingController _guestNameController = TextEditingController();
+  final TextEditingController _guestPhoneController = TextEditingController();
   final TextEditingController _extraDetailsController = TextEditingController();
   final TextEditingController _totalCostController = TextEditingController();
   final TextEditingController _advanceAmountController =
@@ -152,9 +153,11 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         _checkOutDate == null ||
         _roomType == null ||
         _packageType == null ||
-        _selectedRooms.isEmpty) {
+        _selectedRooms.isEmpty ||
+        _guestNameController.text.trim().isEmpty ||    // ← NEW
+        _guestPhoneController.text.trim().isEmpty) {   // ← NEW
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please fill in all fields and select rooms')),
+        SnackBar(content: Text('Please fill in all fields including guest name and phone')),
       );
       return;
     }
@@ -336,9 +339,12 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         'num_of_nights': _numOfNights,
         'total': costPerRoom.toStringAsFixed(2), // Convert back to String
         'advance': advancePerRoom.toStringAsFixed(2), // Convert back to String
+        'guestName': _guestNameController.text,    // ← NEW
+        'guestPhone': _guestPhoneController.text,  // ← NEW
       };
 
       try {
+        print(newBooking);
         await _apiService.addBooking(newBooking);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -367,7 +373,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       _extraDetailsController.clear();
       _advanceAmountController.clear();
       _totalCostController.clear();
-
+      _guestNameController.clear();   // ← NEW
+      _guestPhoneController.clear();
       _selectedRooms.clear();
       _bookedRooms.clear();
       _checkInDate = null;
@@ -437,6 +444,20 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                 ),
               ),
               SizedBox(height: 16),
+
+              // Guest Name
+              _buildTextFieldContainer(
+                controller: _guestNameController,
+                labelText: 'Guest Name',
+              ),
+              const SizedBox(height: 20),
+
+// Guest Phone
+              _buildTextFieldContainer2(
+                controller: _guestPhoneController,
+                labelText: 'Guest Phone Number',
+              ),
+              const SizedBox(height: 20),
 
               // Row for Check-In and Check-Out Buttons
               Row(

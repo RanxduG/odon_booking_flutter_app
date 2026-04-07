@@ -3,11 +3,12 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Switch back to Railway URL after rehosting the backend
-  final String baseUrl = 'http://192.168.1.26:3000';
-  //final String baseUrl = 'https://odonbookingflutterapp-production.up.railway.app';
+  //final String baseUrl = 'http://192.168.1.7:3000';
+  final String baseUrl = 'https://odonbookingflutterapp-production.up.railway.app';
   // Android emulator: use http://10.0.2.2:3000
   // Physical device: use your machine's local IP, e.g. http://192.168.1.26:3000
   //http://localhost:3000
+
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
     //final String baseUrl = await _getBaseUrl();
     final response = await http.get(Uri.parse('$baseUrl/bookings?fromCheckIn=${fromDate.toIso8601String()}'));
