@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'file_saver.dart';
 
+//PUT TO DEV FIRST
 Future<void> generateInvoice({
   required String guestName,
   String? guestPhone,
@@ -34,7 +35,7 @@ Future<void> generateInvoice({
   final boldFont = pw.Font.helveticaBold();
   final italicFont = pw.Font.helveticaOblique();
 
-  // Format dates for display
+  // Format dates for displayjhhjjhjjhjhjh
   final dateFormat = DateFormat('dd MMM yyyy');
   final formattedCheckIn = dateFormat.format(checkInDate);
   final formattedCheckOut = dateFormat.format(checkOutDate);
@@ -176,7 +177,10 @@ Future<void> generateInvoice({
                       pw.SizedBox(height: 4),
                       pw.Text(
                         "* Extra hour charge: LKR 1,000 per hour",
-                        style: pw.TextStyle(font: italicFont, fontSize: 10, color: PdfColors.red),
+                        style: pw.TextStyle(
+                            font: italicFont,
+                            fontSize: 10,
+                            color: PdfColors.red),
                       ),
                     ],
                   ),
