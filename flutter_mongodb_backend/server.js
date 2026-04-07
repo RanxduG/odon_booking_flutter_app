@@ -6,6 +6,15 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Default room prices (used to seed DB on first run)
+const DEFAULT_PACKAGE_PRICES = {
+  'Full Board':        { 'Single': 15250, 'Double': 22500, 'Triple': 28750, 'Family': 35000, 'Family Plus': 42250 },
+  'Half Board':        { 'Single': 13250, 'Double': 18500, 'Triple': 22750, 'Family': 27000, 'Family Plus': 32250 },
+  'Bed and Breakfast': { 'Single': 11250, 'Double': 14500, 'Triple': 16750, 'Family': 19000, 'Family Plus': 22250 },
+  'Room Only':         { 'Single': 10000, 'Double': 12000, 'Triple': 13000, 'Family': 14000, 'Family Plus': 16000 },
+  'Room + Dinner':     { 'Single': 14000, 'Double': 15000, 'Triple': 18000, 'Family': 21000, 'Family Plus': 24000 },
+};
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
@@ -433,6 +442,47 @@ app.get('/expenses/month/:year/:month', async (req, res) => {
     res.json(expenses);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// PRICE CONFIG
+
+const priceConfigSchema = new mongoose.Schema({
+  packages: { type: mongoose.Schema.Types.Mixed, required: true },
+  driverRoomPrice: { type: Number, required: true },
+}, { timestamps: true });
+
+const PriceConfig = mongoose.model('PriceConfig', priceConfigSchema);
+
+// Get prices (seeds defaults if none exist)
+app.get('/prices', async (req, res) => {
+  try {
+    let config = await PriceConfig.findOne();
+    if (!config) {
+      config = new PriceConfig({ packages: DEFAULT_PACKAGE_PRICES, driverRoomPrice: 2500 });
+      await config.save();
+    }
+    res.json(config);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Update prices
+app.put('/prices', async (req, res) => {
+  try {
+    let config = await PriceConfig.findOne();
+    if (!config) {
+      config = new PriceConfig({ packages: req.body.packages, driverRoomPrice: req.body.driverRoomPrice });
+    } else {
+      config.packages = req.body.packages;
+      config.driverRoomPrice = req.body.driverRoomPrice;
+      config.markModified('packages'); // required for Mixed type
+    }
+    await config.save();
+    res.json(config);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
