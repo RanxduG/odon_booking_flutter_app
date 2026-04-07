@@ -327,6 +327,8 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                       ? DateTime.parse(booking['checkOut'])
                       : null;
                   final numOfNights = booking['num_of_nights']?.toString() ?? 'N/A';
+                  final guestName = booking['guestName'] as String? ?? '';    // ← NEW
+                  final guestPhone = booking['guestPhone'] as String? ?? ''; // ← NEW
 
                   return Container(
                     margin: EdgeInsets.symmetric(vertical: 8.0),
@@ -356,7 +358,9 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                             'Check-in: ${checkIn != null ? checkIn.toUtc().toString().split(' ')[0] : 'N/A'}\n'
                             'Check-out: ${checkOut != null ? checkOut.toUtc().toString().split(' ')[0] : 'N/A'}\n'
                             'Nights: $numOfNights\n'
-                            'Details: $extraDetails',
+                            'Details: $extraDetails\n'
+                            '${guestName.isNotEmpty ? 'Guest: $guestName\n' : ''}'
+                            '${guestPhone.isNotEmpty ? 'Phone: $guestPhone' : ''}',
                       ),
                       trailing: IconButton(
                         icon: Icon(Icons.edit, color: Colors.indigo),

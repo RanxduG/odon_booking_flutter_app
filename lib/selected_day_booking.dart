@@ -83,6 +83,16 @@ class SelectedDayBookingsScreen extends StatelessWidget {
                         _buildBookingDetail('Nights', numOfNights.toString()),
                       ],
                     ),
+                    const SizedBox(height: 8.0),
+                    Text(
+                      'Guest Name: ${booking['guestName'] ?? 'N/A'}',
+                      style: TextStyle(fontSize: 14.0, color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 8.0),
+                    Text(
+                      'Guest Phone Number: ${booking['guestPhone'] ?? 'N/A'}',
+                      style: TextStyle(fontSize: 14.0, color: Colors.grey[700]),
+                    ),
                     const SizedBox(height: 16.0),
                     Text(
                       'Type: ${booking['roomType'] ?? 'N/A'}, Package: ${booking['package'] ?? 'N/A'}',
@@ -93,7 +103,7 @@ class SelectedDayBookingsScreen extends StatelessWidget {
                       'Details: ${booking['extraDetails'] ?? 'N/A'}',
                       style: TextStyle(fontSize: 14.0, color: Colors.grey[700]),
                     ),
-                    const SizedBox(height: 16.0),
+                    const SizedBox(height: 8.0),
 
                   ],
                 ),

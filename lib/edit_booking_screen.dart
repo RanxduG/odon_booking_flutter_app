@@ -6,14 +6,14 @@ class EditBookingScreen extends StatelessWidget {
   final DateTime selectedDay;
   final ApiService _apiService = ApiService();
   late ValueNotifier<String?> balanceMethodNotifier = ValueNotifier<String?>(null);
-  String  balance = "N/A";
+  ValueNotifier<String> balanceNotifier = ValueNotifier<String>("N/A");
   EditBookingScreen({required this.booking, required this.selectedDay});
 
   void calBalance(TextEditingController totalController, TextEditingController advanceController) {
     try {
       final int total = int.tryParse(totalController.text) ?? 0;
       final int advance = int.tryParse(advanceController.text) ?? 0;
-      balance = (total - advance).toString(); // Corrected type conversion
+      balanceNotifier.value = (total - advance).toString(); // ← notify listeners
     } catch (e) {
       print(e);
     }
@@ -28,6 +28,9 @@ class EditBookingScreen extends StatelessWidget {
     TextEditingController extraDetailsController = TextEditingController(text: booking['extraDetails'] as String? ?? '');
     TextEditingController totalController = TextEditingController(text: booking['total'] as String? ?? '');
     TextEditingController advanceController = TextEditingController(text: booking['advance'] as String? ?? '');
+    TextEditingController guestNameController = TextEditingController(text: booking['guestName'] as String? ?? '');
+    TextEditingController guestPhoneController = TextEditingController(text: booking['guestPhone'] as String? ?? '');
+
     balanceMethodNotifier = ValueNotifier<String?>(
       (booking['balanceMethod'] == "Bank" || booking['balanceMethod'] == "Cash")
           ? booking['balanceMethod'] as String?
@@ -67,6 +70,20 @@ class EditBookingScreen extends StatelessWidget {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.indigo),
             ),
             const SizedBox(height: 20),
+
+            _buildStyledTextField(
+              'Guest Name',
+              guestNameController,
+              icon: Icons.person,
+            ),
+            const SizedBox(height: 15),
+
+            _buildStyledTextField(
+              'Guest Phone',
+              guestPhoneController,
+              icon: Icons.phone,
+            ),
+            const SizedBox(height: 15),
 
             // Styled Text Fields
             _buildStyledTextField(
@@ -115,13 +132,18 @@ class EditBookingScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
-            Text(
-              " Balance : $balance",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.indigo,
-              ),
+            ValueListenableBuilder<String>(
+              valueListenable: balanceNotifier,
+              builder: (context, balanceValue, child) {
+                return Text(
+                  " Balance : $balanceValue",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.indigo,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 30),
 
@@ -185,9 +207,11 @@ class EditBookingScreen extends StatelessWidget {
                         'extraDetails': extraDetailsController.text,
                         'checkIn': booking['checkIn'],
                         'checkOut': booking['checkOut'],
-                        'total' :  totalController.text,
-                        'advance' :  advanceController.text,
-                        'balanceMethod' : balanceMethodNotifier.value
+                        'total': totalController.text,
+                        'advance': advanceController.text,
+                        'balanceMethod': balanceMethodNotifier.value,
+                        'guestName': guestNameController.text,    // ← NEW
+                        'guestPhone': guestPhoneController.text,  // ← NEW
                       };
 
                       try {
