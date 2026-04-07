@@ -35,7 +35,7 @@ Future<void> generateInvoice({
   final boldFont = pw.Font.helveticaBold();
   final italicFont = pw.Font.helveticaOblique();
 
-  // Format dates for display
+  // Format dates for displayjhhjjhjjhjhjh
   final dateFormat = DateFormat('dd MMM yyyy');
   final formattedCheckIn = dateFormat.format(checkInDate);
   final formattedCheckOut = dateFormat.format(checkOutDate);
