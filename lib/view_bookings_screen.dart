@@ -353,8 +353,8 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                       subtitle: Text(
                         'Type: $roomType\n'
                             'Package: $package\n'
-                            'Check-in: ${checkIn != null ? checkIn.toLocal().toString().split(' ')[0] : 'N/A'}\n'
-                            'Check-out: ${checkOut != null ? checkOut.toLocal().toString().split(' ')[0] : 'N/A'}\n'
+                            'Check-in: ${checkIn != null ? checkIn.toUtc().toString().split(' ')[0] : 'N/A'}\n'
+                            'Check-out: ${checkOut != null ? checkOut.toUtc().toString().split(' ')[0] : 'N/A'}\n'
                             'Nights: $numOfNights\n'
                             'Details: $extraDetails',
                       ),

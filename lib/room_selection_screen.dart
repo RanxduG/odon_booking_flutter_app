@@ -3,8 +3,6 @@ import 'package:intl/intl.dart';
 import 'api_service.dart';
 
 class RoomSelectionScreen extends StatefulWidget {
-
-
   @override
   _RoomSelectionScreenState createState() => _RoomSelectionScreenState();
 }
@@ -17,7 +15,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
 
   final TextEditingController _extraDetailsController = TextEditingController();
   final TextEditingController _totalCostController = TextEditingController();
-  final TextEditingController _advanceAmountController = TextEditingController();
+  final TextEditingController _advanceAmountController =
+      TextEditingController();
 
   Set<int> _selectedRooms = {};
   Set<int> _bookedRooms = {};
@@ -82,43 +81,58 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
 
     try {
       // Fetch all bookings for the selected date range
-      List<Map<String, dynamic>> bookings = await _apiService.fetchBookingsForDateRange(_checkInDate!, _checkOutDate!);
+      List<Map<String, dynamic>> bookings = await _apiService
+          .fetchBookingsForDateRange(_checkInDate!, _checkOutDate!);
 
       setState(() {
         _bookedRooms = bookings
             .where((booking) {
-          DateTime bookingCheckIn = DateTime.parse(booking['checkIn']);
-          DateTime bookingCheckOut = DateTime.parse(booking['checkOut']);
+              DateTime bookingCheckIn = DateTime.parse(booking['checkIn']);
+              DateTime bookingCheckOut = DateTime.parse(booking['checkOut']);
 
-          // Normalize both booking and user-selected dates to ignore the time part
-          DateTime normalizedBookingCheckIn = DateTime(bookingCheckIn.year, bookingCheckIn.month, bookingCheckIn.day);
-          DateTime normalizedBookingCheckOut = DateTime(bookingCheckOut.year, bookingCheckOut.month, bookingCheckOut.day);
-          DateTime normalizedCheckIn = DateTime(_checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
-          DateTime normalizedCheckOut = DateTime(_checkOutDate!.year, _checkOutDate!.month, _checkOutDate!.day);
+              // Normalize both booking and user-selected dates to ignore the time part
+              DateTime normalizedBookingCheckIn = DateTime(bookingCheckIn.year,
+                  bookingCheckIn.month, bookingCheckIn.day);
+              DateTime normalizedBookingCheckOut = DateTime(
+                  bookingCheckOut.year,
+                  bookingCheckOut.month,
+                  bookingCheckOut.day);
+              DateTime normalizedCheckIn = DateTime(
+                  _checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
+              DateTime normalizedCheckOut = DateTime(_checkOutDate!.year,
+                  _checkOutDate!.month, _checkOutDate!.day);
 
-          // Print fetched room details for debugging
-          print('Fetched booking - Room: ${booking['roomNumber']}, Check-in: $bookingCheckIn, Check-out: $bookingCheckOut');
+              // Print fetched room details for debugging
+              print(
+                  'Fetched booking - Room: ${booking['roomNumber']}, Check-in: $bookingCheckIn, Check-out: $bookingCheckOut');
 
-          // Check if there's an overlap in booking (ignoring time, comparing only dates)
-          bool isBooked = normalizedCheckIn.isBefore(normalizedBookingCheckOut) &&
-              normalizedCheckOut.isAfter(normalizedBookingCheckIn);
+              // Check if there's an overlap in booking (ignoring time, comparing only dates)
+              bool isBooked =
+                  normalizedCheckIn.isBefore(normalizedBookingCheckOut) &&
+                      normalizedCheckOut.isAfter(normalizedBookingCheckIn);
 
-          // Debugging: Print the overlap check
-          print('Normalized Check-In: $normalizedCheckIn, Check-Out: $normalizedCheckOut');
-          print('Comparing with Booking - Room: ${booking['roomNumber']}, Normalized Booking Check-In: $normalizedBookingCheckIn, Normalized Booking Check-Out: $normalizedBookingCheckOut');
-          print('Is Booked (before checkout logic): $isBooked');
+              // Debugging: Print the overlap check
+              print(
+                  'Normalized Check-In: $normalizedCheckIn, Check-Out: $normalizedCheckOut');
+              print(
+                  'Comparing with Booking - Room: ${booking['roomNumber']}, Normalized Booking Check-In: $normalizedBookingCheckIn, Normalized Booking Check-Out: $normalizedBookingCheckOut');
+              print('Is Booked (before checkout logic): $isBooked');
 
-          // Logic to handle the case where the check-in date is on the day of the checkout
-          if (normalizedCheckIn.isAtSameMomentAs(normalizedBookingCheckOut)) {
-            isBooked = false; // Room should be available for booking on the checkout day
-            print('Check-in is on checkout day, so not booked: Room ${booking['roomNumber']}');
-          }
+              // Logic to handle the case where the check-in date is on the day of the checkout
+              if (normalizedCheckIn
+                  .isAtSameMomentAs(normalizedBookingCheckOut)) {
+                isBooked =
+                    false; // Room should be available for booking on the checkout day
+                print(
+                    'Check-in is on checkout day, so not booked: Room ${booking['roomNumber']}');
+              }
 
-          // Final debug statement to confirm the booking status
-          print('Final isBooked for Room ${booking['roomNumber']}: $isBooked');
+              // Final debug statement to confirm the booking status
+              print(
+                  'Final isBooked for Room ${booking['roomNumber']}: $isBooked');
 
-          return isBooked;
-        })
+              return isBooked;
+            })
             .map((booking) => int.parse(booking['roomNumber']))
             .toSet();
 
@@ -133,12 +147,12 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     }
   }
 
-
-
-
-
   Future<void> _saveBooking() async {
-    if (_checkInDate == null || _checkOutDate == null || _roomType == null || _packageType == null || _selectedRooms.isEmpty) {
+    if (_checkInDate == null ||
+        _checkOutDate == null ||
+        _roomType == null ||
+        _packageType == null ||
+        _selectedRooms.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please fill in all fields and select rooms')),
       );
@@ -154,9 +168,14 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     double costPerRoom = numRooms > 0 ? totalCostValue / numRooms : 0.0;
     double advancePerRoom = numRooms > 0 ? advanceValue / numRooms : 0.0;
 
-    // Normalize check-in and check-out dates to avoid timezone issues
-    DateTime normalizedCheckInDate = DateTime(_checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
-    DateTime normalizedCheckOutDate = DateTime(_checkOutDate!.year, _checkOutDate!.month, _checkOutDate!.day);
+    // Normalize check-in and check-out dates as UTC midnight so that
+    // the ISO string includes a Z suffix. Without it, JavaScript (Node.js)
+    // treats the string as local time and shifts the date by the server's
+    // UTC offset before storing in MongoDB.
+    DateTime normalizedCheckInDate =
+        DateTime.utc(_checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
+    DateTime normalizedCheckOutDate =
+        DateTime.utc(_checkOutDate!.year, _checkOutDate!.month, _checkOutDate!.day);
 
     // Fetch the current inventory
     List<dynamic> inventoryItems;
@@ -185,7 +204,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           'milk creamer sachets': 2,
           'black tea sachets': 2,
           'nescafe sachet': 2,
-
         };
         break;
       case 'Double':
@@ -200,7 +218,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           'milk creamer sachets': 2,
           'black tea sachets': 2,
           'nescafe sachet': 2,
-
         };
         break;
       case 'Triple':
@@ -246,7 +263,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         };
         break;
       default:
-      // For any other room type, don't subtract anything
+        // For any other room type, don't subtract anything
         itemsToSubtract = {
           'soap': 0,
           'conditioner': 0,
@@ -263,17 +280,17 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         break;
     }
 
-
     bool hasInventoryIssue = false;
 
     // Check if there's enough inventory but still proceed
     for (var key in itemsToSubtract.keys) {
       final inventoryItem = inventoryItems.firstWhere(
-            (item) => item['item_name'].toLowerCase() == key,
+        (item) => item['item_name'].toLowerCase() == key,
         orElse: () => null,
       );
 
-      if (inventoryItem == null || (inventoryItem['quantity'] ?? 0) < itemsToSubtract[key]!) {
+      if (inventoryItem == null ||
+          (inventoryItem['quantity'] ?? 0) < itemsToSubtract[key]!) {
         hasInventoryIssue = true;
       }
     }
@@ -281,12 +298,13 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     // Deduct the inventory but only for items that exist in the inventory
     for (var key in itemsToSubtract.keys) {
       final inventoryItem = inventoryItems.firstWhere(
-            (item) => item['item_name'].toLowerCase() == key,
+        (item) => item['item_name'].toLowerCase() == key,
         orElse: () => null,
       );
 
       if (inventoryItem != null) {
-        final updatedQuantity = (inventoryItem['quantity'] ?? 0) - itemsToSubtract[key]!;
+        final updatedQuantity =
+            (inventoryItem['quantity'] ?? 0) - itemsToSubtract[key]!;
         if (updatedQuantity >= 0) {
           // Update inventory in the database
           try {
@@ -342,7 +360,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     _resetBooking();
   }
 
-
   void _resetBooking() {
     setState(() {
       _roomType = null;
@@ -383,43 +400,43 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Room Type Details Section
-                Text(
-                  'Room Details for GROUND FLOOR:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.indigo,
-                  ),
+              Text(
+                'Room Details for GROUND FLOOR:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.indigo,
                 ),
-                SizedBox(height: 8),
+              ),
+              SizedBox(height: 8),
 
-                Text(
-                  '2 - Double\n3 - Triple\n(Note: Rooms 2, 3, and 5 do not have hot water working. Room 4 is the Manager\'s room.)',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                  ),
+              Text(
+                '2 - Double\n3 - Triple\n(Note: Rooms 2, 3, and 5 do not have hot water working. Room 4 is the Manager\'s room.)',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[700],
                 ),
+              ),
 
-                SizedBox(height: 16),
+              SizedBox(height: 16),
 
-                Text(
-                  'Room Details for FIRST FLOOR:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.indigo,
-                  ),
+              Text(
+                'Room Details for FIRST FLOOR:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.indigo,
                 ),
-                SizedBox(height: 8),
-                Text(
-                  '102 - Double , 103 - Triple , 104 - Double , 105 - Double , 106 - Triple',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                  ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '102 - Double , 103 - Triple , 104 - Double , 105 - Double , 106 - Triple',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[700],
                 ),
-                SizedBox(height: 16),
+              ),
+              SizedBox(height: 16),
 
               // Row for Check-In and Check-Out Buttons
               Row(
@@ -454,7 +471,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
               _buildDropdownContainer(
                 label: 'Select Room Type',
                 value: _roomType,
-                items: ['Family', 'Family Plus', 'Triple', 'Double','Single'],
+                items: ['Family', 'Family Plus', 'Triple', 'Double', 'Single'],
                 onChanged: (value) {
                   setState(() {
                     _roomType = value;
@@ -498,7 +515,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: Colors.indigo,
-
                 ),
               ),
               // Room Selection Grid
@@ -515,7 +531,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                     ),
                   ],
                 ),
-
                 child: GridView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
@@ -533,27 +548,28 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                     bool isManagerRoom = roomNumber == 4;
 
                     // Check if the room is already booked for the selected date range
-                    bool isBooked = isManagerRoom || _bookedRooms.contains(roomNumber);
+                    bool isBooked =
+                        isManagerRoom || _bookedRooms.contains(roomNumber);
 
                     return ElevatedButton(
                       onPressed: isBooked
                           ? null
                           : () {
-                        setState(() {
-                          if (_selectedRooms.contains(roomNumber)) {
-                            _selectedRooms.remove(roomNumber);
-                          } else {
-                            _selectedRooms.add(roomNumber);
-                          }
-                        });
-                      },
+                              setState(() {
+                                if (_selectedRooms.contains(roomNumber)) {
+                                  _selectedRooms.remove(roomNumber);
+                                } else {
+                                  _selectedRooms.add(roomNumber);
+                                }
+                              });
+                            },
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.black,
                         backgroundColor: isBooked
                             ? Colors.red
                             : (_selectedRooms.contains(roomNumber)
-                            ? Colors.green
-                            : Colors.white),
+                                ? Colors.green
+                                : Colors.white),
                         padding: EdgeInsets.all(8.0),
                         elevation: 4,
                         shadowColor: Colors.grey.shade400,
@@ -616,21 +632,21 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                       onPressed: isBooked
                           ? null
                           : () {
-                        setState(() {
-                          if (_selectedRooms.contains(roomNumber)) {
-                            _selectedRooms.remove(roomNumber);
-                          } else {
-                            _selectedRooms.add(roomNumber);
-                          }
-                        });
-                      },
+                              setState(() {
+                                if (_selectedRooms.contains(roomNumber)) {
+                                  _selectedRooms.remove(roomNumber);
+                                } else {
+                                  _selectedRooms.add(roomNumber);
+                                }
+                              });
+                            },
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.black,
                         backgroundColor: isBooked
                             ? Colors.red
                             : (_selectedRooms.contains(roomNumber)
-                            ? Colors.green
-                            : Colors.white),
+                                ? Colors.green
+                                : Colors.white),
                         padding: EdgeInsets.all(8.0),
                         elevation: 4,
                         shadowColor: Colors.grey.shade400,
@@ -674,7 +690,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   }
 
 // Helper Widgets
-  Widget _buildElevatedButton({required String label, required VoidCallback onPressed}) {
+  Widget _buildElevatedButton(
+      {required String label, required VoidCallback onPressed}) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -718,9 +735,9 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         decoration: InputDecoration(border: InputBorder.none, labelText: label),
         items: items
             .map((label) => DropdownMenuItem(
-          child: Text(label),
-          value: label,
-        ))
+                  child: Text(label),
+                  value: label,
+                ))
             .toList(),
         onChanged: onChanged,
       ),

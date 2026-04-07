@@ -8,29 +8,24 @@ class ApiService {
   // Android emulator: use http://10.0.2.2:3000
   // Physical device: use your machine's local IP, e.g. http://192.168.1.26:3000
   //http://localhost:3000
-  Future<List<Map<String, dynamic>>> fetchFutureBookings(
-      DateTime fromDate) async {
+  Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
     //final String baseUrl = await _getBaseUrl();
-    final response = await http.get(Uri.parse(
-        '$baseUrl/bookings?fromCheckIn=${fromDate.toIso8601String()}'));
+    final response = await http.get(Uri.parse('$baseUrl/bookings?fromCheckIn=${fromDate.toIso8601String()}'));
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
     } else {
-      throw Exception(
-          'Failed to fetch future bookings123: ${response.reasonPhrase}');
+      throw Exception('Failed to fetch future bookings123: ${response.reasonPhrase}');
     }
   }
 
   // Fetch bookings for the selected date range
-  Future<List<Map<String, dynamic>>> fetchBookingsForDateRange(
-      DateTime checkInDate, DateTime checkOutDate) async {
+  Future<List<Map<String, dynamic>>> fetchBookingsForDateRange(DateTime checkInDate, DateTime checkOutDate) async {
     //final String baseUrl = await _getBaseUrl();
     final String checkIn = checkInDate.toIso8601String();
     final String checkOut = checkOutDate.toIso8601String();
 
-    final url =
-        Uri.parse('$baseUrl/bookings?checkIn=$checkIn&checkOut=$checkOut');
+    final url = Uri.parse('$baseUrl/bookings?checkIn=$checkIn&checkOut=$checkOut');
 
     try {
       final response = await http.get(url);
@@ -48,45 +43,37 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchBookingsForMonth(
-      DateTime month) async {
+  Future<List<Map<String, dynamic>>> fetchBookingsForMonth(DateTime month) async {
     //final String baseUrl = await _getBaseUrl();
     // Get the start and end of the selected month
-    final String startOfMonth =
-        DateTime(month.year, month.month, 1).toIso8601String();
-    final String endOfMonth =
-        DateTime(month.year, month.month + 1, 0).toIso8601String();
+    final String startOfMonth = DateTime(month.year, month.month, 1).toIso8601String();
+    final String endOfMonth = DateTime(month.year, month.month + 1, 0).toIso8601String();
 
     // API call to fetch bookings where checkIn and checkOut fall within the selected month
-    final response = await http.get(Uri.parse(
-        '$baseUrl/bookings?checkInStart=$startOfMonth&checkOutEnd=$endOfMonth'));
+    final response = await http.get(Uri.parse('$baseUrl/bookings?checkInStart=$startOfMonth&checkOutEnd=$endOfMonth'));
 
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
     } else {
-      throw Exception(
-          'Failed to fetch bookings for the selected month: ${response.reasonPhrase}');
+      throw Exception('Failed to fetch bookings for the selected month: ${response.reasonPhrase}');
     }
   }
 
+
   Future<List<Map<String, dynamic>>> fetchBookings(DateTime date) async {
     //final String baseUrl = await _getBaseUrl();
-    final response = await http
-        .get(Uri.parse('$baseUrl/bookings?checkIn=${date.toIso8601String()}'));
+    final response = await http.get(Uri.parse('$baseUrl/bookings?checkIn=${date.toIso8601String()}'));
 
     if (response.statusCode == 200) {
       List<dynamic> bookings = json.decode(response.body);
-      return bookings
-          .map((booking) => Map<String, dynamic>.from(booking))
-          .toList();
+      return bookings.map((booking) => Map<String, dynamic>.from(booking)).toList();
     } else {
       throw Exception('Failed to load bookings: ${response.reasonPhrase}');
     }
   }
 
-  Future<void> updateBooking(
-      String id, Map<String, dynamic> updatedBooking) async {
+  Future<void> updateBooking(String id, Map<String, dynamic> updatedBooking) async {
     final response = await http.put(
       Uri.parse('$baseUrl/bookings/$id'),
       headers: <String, String>{
@@ -150,13 +137,11 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as List<dynamic>;
     } else {
-      throw Exception(
-          'Failed to fetch inventory items: ${response.reasonPhrase}');
+      throw Exception('Failed to fetch inventory items: ${response.reasonPhrase}');
     }
   }
 
-  Future<void> updateInventoryItem(
-      String id, Map<String, dynamic> updatedItem) async {
+  Future<void> updateInventoryItem(String id, Map<String, dynamic> updatedItem) async {
     final response = await http.put(
       Uri.parse('$baseUrl/inventory/$id'),
       headers: <String, String>{
@@ -166,8 +151,7 @@ class ApiService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
-          'Failed to update inventory item: ${response.reasonPhrase}');
+      throw Exception('Failed to update inventory item: ${response.reasonPhrase}');
     }
   }
 
@@ -242,8 +226,7 @@ class ApiService {
     }
   }
 
-  Future<void> updateExpense(
-      String id, Map<String, dynamic> expenseData) async {
+  Future<void> updateExpense(String id, Map<String, dynamic> expenseData) async {
     final response = await http.put(
       Uri.parse('$baseUrl/expenses/$id'),
       headers: <String, String>{
@@ -264,31 +247,30 @@ class ApiService {
     }
   }
 
+
   // Fetch expenses for a specific month
-  Future<List<Map<String, dynamic>>> fetchExpensesForMonth(
-      DateTime month) async {
-    final response = await http
-        .get(Uri.parse('$baseUrl/expenses/month/${month.year}/${month.month}'));
+  Future<List<Map<String, dynamic>>> fetchExpensesForMonth(DateTime month) async {
+    final response = await http.get(
+        Uri.parse('$baseUrl/expenses/month/${month.year}/${month.month}')
+    );
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
     } else {
-      throw Exception(
-          'Failed to fetch expenses for month: ${response.reasonPhrase}');
+      throw Exception('Failed to fetch expenses for month: ${response.reasonPhrase}');
     }
   }
 
 // Fetch salaries for a specific month
-  Future<List<Map<String, dynamic>>> fetchSalariesForMonth(
-      DateTime month) async {
-    final response = await http
-        .get(Uri.parse('$baseUrl/salaries/month/${month.year}/${month.month}'));
+  Future<List<Map<String, dynamic>>> fetchSalariesForMonth(DateTime month) async {
+    final response = await http.get(
+        Uri.parse('$baseUrl/salaries/month/${month.year}/${month.month}')
+    );
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
     } else {
-      throw Exception(
-          'Failed to fetch salaries for month: ${response.reasonPhrase}');
+      throw Exception('Failed to fetch salaries for month: ${response.reasonPhrase}');
     }
   }
 
@@ -301,10 +283,10 @@ class ApiService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
-          'Failed to delete inventory item: ${response.reasonPhrase}');
+      throw Exception('Failed to delete inventory item: ${response.reasonPhrase}');
     }
   }
+
 
   // PRICE CONFIG METHODS
 
