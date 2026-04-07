@@ -1,11 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-
-  final String baseUrl = 'http://15.207.116.36:3000';
-  //final String baseUrl = 'http://192.168.1.26:3000';
+  // Switch back to Railway URL after rehosting the backend
+  //final String baseUrl = 'http://192.168.1.7:3000';
+  final String baseUrl = 'https://odonbookingflutterapp-production.up.railway.app';
+  // Android emulator: use http://10.0.2.2:3000
+  // Physical device: use your machine's local IP, e.g. http://192.168.1.26:3000
+  //http://localhost:3000
 
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
     //final String baseUrl = await _getBaseUrl();
@@ -283,6 +285,33 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to delete inventory item: ${response.reasonPhrase}');
+    }
+  }
+
+
+  // PRICE CONFIG METHODS
+
+  Future<Map<String, dynamic>> fetchPrices() async {
+    final response = await http.get(Uri.parse('$baseUrl/prices'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch prices: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> updatePrices(
+      Map<String, Map<String, double>> packages, double driverRoomPrice) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/prices'),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({
+        'packages': packages,
+        'driverRoomPrice': driverRoomPrice,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update prices: ${response.reasonPhrase}');
     }
   }
 }

@@ -1,12 +1,12 @@
-import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import 'file_saver.dart';
 
+//PUT TO DEV FIRST
 Future<void> generateInvoice({
   required String guestName,
+  String? guestPhone,
   required String checkIn,
   required String checkOut,
   required int numGuests,
@@ -30,28 +30,31 @@ Future<void> generateInvoice({
   final DateTime checkOutDate = DateTime.parse(checkOut);
   final int stayDuration = checkOutDate.difference(checkInDate).inDays;
 
-  // Use default fonts
+  // Use built-in fonts (web will show a warning but PDF generates correctly on mobile)
   final defaultFont = pw.Font.helvetica();
   final boldFont = pw.Font.helveticaBold();
   final italicFont = pw.Font.helveticaOblique();
 
-  // Format dates for display
+  // Format dates for displayjhhjjhjjhjhjh
   final dateFormat = DateFormat('dd MMM yyyy');
   final formattedCheckIn = dateFormat.format(checkInDate);
   final formattedCheckOut = dateFormat.format(checkOutDate);
 
   // Generate invoice number
-  final invoiceNumber = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+  final invoiceNumber =
+      'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
   final currentDate = dateFormat.format(DateTime.now());
 
   // Create a paid stamp if advance payment was made
   final paidStamp = double.parse(advanceAmount.replaceAll(',', '')) > 0;
 
   // Calculate total extra charges
-  final totalExtraCharges = extraCharges.fold(0.0, (sum, charge) => sum + charge.amount);
+  final totalExtraCharges =
+      extraCharges.fold(0.0, (sum, charge) => sum + charge.amount);
 
   // Check if there is an additional discount to show
-  final bool showAdditionalDiscount = (double.tryParse(additionalDiscount.replaceAll(',', '')) ?? 0.0) > 0.0;
+  final bool showAdditionalDiscount =
+      (double.tryParse(additionalDiscount.replaceAll(',', '')) ?? 0.0) > 0.0;
 
   pdf.addPage(
     pw.Page(
@@ -123,6 +126,11 @@ Future<void> generateInvoice({
                         guestName,
                         style: pw.TextStyle(font: defaultFont, fontSize: 12),
                       ),
+                      if (guestPhone != null)
+                        pw.Text(
+                          "Tel: $guestPhone",
+                          style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                        ),
                     ],
                   ),
                 ),
@@ -136,11 +144,11 @@ Future<void> generateInvoice({
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
-                        "Check-in: $formattedCheckIn",
+                        "Check-in: $formattedCheckIn  (2:00 PM)",
                         style: pw.TextStyle(font: defaultFont, fontSize: 12),
                       ),
                       pw.Text(
-                        "Check-out: $formattedCheckOut",
+                        "Check-out: $formattedCheckOut  (11:00 AM)",
                         style: pw.TextStyle(font: defaultFont, fontSize: 12),
                       ),
                       pw.Text(
@@ -166,6 +174,14 @@ Future<void> generateInvoice({
                           style: pw.TextStyle(font: defaultFont, fontSize: 12),
                         ),
                       // END: Display starting meal
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        "* Extra hour charge: LKR 1,000 per hour",
+                        style: pw.TextStyle(
+                            font: italicFont,
+                            fontSize: 10,
+                            color: PdfColors.red),
+                      ),
                     ],
                   ),
                 ),
@@ -247,7 +263,9 @@ Future<void> generateInvoice({
                     pw.Expanded(
                       flex: 2,
                       child: pw.Text(
-                        "LKR " + NumberFormat('#,##0.00').format(details['unitPrice']),
+                        "LKR " +
+                            NumberFormat('#,##0.00')
+                                .format(details['unitPrice']),
                         style: pw.TextStyle(font: defaultFont, fontSize: 12),
                         textAlign: pw.TextAlign.center,
                       ),
@@ -271,7 +289,9 @@ Future<void> generateInvoice({
                     pw.Expanded(
                       flex: 2,
                       child: pw.Text(
-                        "LKR " + NumberFormat('#,##0.00').format(details['totalPrice']),
+                        "LKR " +
+                            NumberFormat('#,##0.00')
+                                .format(details['totalPrice']),
                         style: pw.TextStyle(font: defaultFont, fontSize: 12),
                         textAlign: pw.TextAlign.right,
                       ),
@@ -282,59 +302,71 @@ Future<void> generateInvoice({
             }).toList(),
 
             // Extra charges - Display multiple charges if applicable
-            ...extraCharges.where((charge) => charge.reason.isNotEmpty && charge.amount > 0).map((charge) =>
-                pw.Container(
-                  padding: pw.EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border(
-                      bottom: pw.BorderSide(color: PdfColors.grey300),
-                    ),
-                  ),
-                  child: pw.Row(
-                    children: [
-                      pw.Expanded(
-                        flex: 4,
-                        child: pw.Text(
-                          "Extra: ${charge.reason}",
-                          style: pw.TextStyle(font: defaultFont, fontSize: 12),
+            ...extraCharges
+                .where(
+                    (charge) => charge.reason.isNotEmpty && charge.amount > 0)
+                .map((charge) => pw.Container(
+                      padding:
+                          pw.EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border(
+                          bottom: pw.BorderSide(color: PdfColors.grey300),
                         ),
                       ),
-                      pw.Expanded(
-                        flex: 2,
-                        child: pw.Text(
-                          "LKR " + NumberFormat('#,##0.00').format(charge.amount),
-                          style: pw.TextStyle(font: defaultFont, fontSize: 12),
-                          textAlign: pw.TextAlign.center,
-                        ),
+                      child: pw.Row(
+                        children: [
+                          pw.Expanded(
+                            flex: 4,
+                            child: pw.Text(
+                              "Extra: ${charge.reason}",
+                              style:
+                                  pw.TextStyle(font: defaultFont, fontSize: 12),
+                            ),
+                          ),
+                          pw.Expanded(
+                            flex: 2,
+                            child: pw.Text(
+                              "LKR " +
+                                  NumberFormat('#,##0.00')
+                                      .format(charge.amount),
+                              style:
+                                  pw.TextStyle(font: defaultFont, fontSize: 12),
+                              textAlign: pw.TextAlign.center,
+                            ),
+                          ),
+                          pw.Expanded(
+                            flex: 1,
+                            child: pw.Text(
+                              "1",
+                              style:
+                                  pw.TextStyle(font: defaultFont, fontSize: 12),
+                              textAlign: pw.TextAlign.center,
+                            ),
+                          ),
+                          pw.Expanded(
+                            flex: 1,
+                            child: pw.Text(
+                              "-",
+                              style:
+                                  pw.TextStyle(font: defaultFont, fontSize: 12),
+                              textAlign: pw.TextAlign.center,
+                            ),
+                          ),
+                          pw.Expanded(
+                            flex: 2,
+                            child: pw.Text(
+                              "LKR " +
+                                  NumberFormat('#,##0.00')
+                                      .format(charge.amount),
+                              style:
+                                  pw.TextStyle(font: defaultFont, fontSize: 12),
+                              textAlign: pw.TextAlign.right,
+                            ),
+                          ),
+                        ],
                       ),
-                      pw.Expanded(
-                        flex: 1,
-                        child: pw.Text(
-                          "1",
-                          style: pw.TextStyle(font: defaultFont, fontSize: 12),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                      ),
-                      pw.Expanded(
-                        flex: 1,
-                        child: pw.Text(
-                          "-",
-                          style: pw.TextStyle(font: defaultFont, fontSize: 12),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                      ),
-                      pw.Expanded(
-                        flex: 2,
-                        child: pw.Text(
-                          "LKR " + NumberFormat('#,##0.00').format(charge.amount),
-                          style: pw.TextStyle(font: defaultFont, fontSize: 12),
-                          textAlign: pw.TextAlign.right,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-            ).toList(),
+                    ))
+                .toList(),
 
             pw.SizedBox(height: 20),
 
@@ -352,11 +384,13 @@ Future<void> generateInvoice({
                         children: [
                           pw.Text(
                             "Subtotal:",
-                            style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                            style:
+                                pw.TextStyle(font: defaultFont, fontSize: 12),
                           ),
                           pw.Text(
                             "LKR $totalAmount",
-                            style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                            style:
+                                pw.TextStyle(font: defaultFont, fontSize: 12),
                           ),
                         ],
                       ),
@@ -369,11 +403,15 @@ Future<void> generateInvoice({
                         children: [
                           pw.Text(
                             "Discount:",
-                            style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                            style:
+                                pw.TextStyle(font: defaultFont, fontSize: 12),
                           ),
                           pw.Text(
                             "LKR $standardDiscount",
-                            style: pw.TextStyle(font: defaultFont, fontSize: 12, color: PdfColors.red),
+                            style: pw.TextStyle(
+                                font: defaultFont,
+                                fontSize: 12,
+                                color: PdfColors.red),
                           ),
                         ],
                       ),
@@ -387,11 +425,15 @@ Future<void> generateInvoice({
                           children: [
                             pw.Text(
                               "Additional Discount:",
-                              style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                              style:
+                                  pw.TextStyle(font: defaultFont, fontSize: 12),
                             ),
                             pw.Text(
                               "LKR $additionalDiscount",
-                              style: pw.TextStyle(font: defaultFont, fontSize: 12, color: PdfColors.red),
+                              style: pw.TextStyle(
+                                  font: defaultFont,
+                                  fontSize: 12,
+                                  color: PdfColors.red),
                             ),
                           ],
                         ),
@@ -406,11 +448,15 @@ Future<void> generateInvoice({
                           children: [
                             pw.Text(
                               "Extra Charges:",
-                              style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                              style:
+                                  pw.TextStyle(font: defaultFont, fontSize: 12),
                             ),
                             pw.Text(
-                              "LKR " + NumberFormat('#,##0.00').format(totalExtraCharges),
-                              style: pw.TextStyle(font: defaultFont, fontSize: 12),
+                              "LKR " +
+                                  NumberFormat('#,##0.00')
+                                      .format(totalExtraCharges),
+                              style:
+                                  pw.TextStyle(font: defaultFont, fontSize: 12),
                             ),
                           ],
                         ),
@@ -418,7 +464,8 @@ Future<void> generateInvoice({
                     pw.SizedBox(height: 5),
                     pw.Container(
                       width: 200,
-                      padding: pw.EdgeInsets.symmetric(vertical: 5, horizontal: 0),
+                      padding:
+                          pw.EdgeInsets.symmetric(vertical: 5, horizontal: 0),
                       decoration: pw.BoxDecoration(
                         border: pw.Border(
                           top: pw.BorderSide(color: PdfColors.grey300),
@@ -448,11 +495,17 @@ Future<void> generateInvoice({
                           children: [
                             pw.Text(
                               "Advance Payment:",
-                              style: pw.TextStyle(font: defaultFont, fontSize: 12, color: PdfColors.green),
+                              style: pw.TextStyle(
+                                  font: defaultFont,
+                                  fontSize: 12,
+                                  color: PdfColors.green),
                             ),
                             pw.Text(
                               "LKR $advanceAmount",
-                              style: pw.TextStyle(font: defaultFont, fontSize: 12, color: PdfColors.green),
+                              style: pw.TextStyle(
+                                  font: defaultFont,
+                                  fontSize: 12,
+                                  color: PdfColors.green),
                             ),
                           ],
                         ),
@@ -576,17 +629,8 @@ Future<void> generateInvoice({
     ),
   );
 
-  // Save the PDF to a file
-  final output = await getTemporaryDirectory();
-  final file = File("${output.path}/invoice_$invoiceNumber.pdf");
-  await file.writeAsBytes(await pdf.save());
-
-  // Open the PDF
-  final downloads = await getExternalStorageDirectory();
-  final downloadFile = File("${downloads!.path}/invoice_$invoiceNumber.pdf");
-  await downloadFile.writeAsBytes(await pdf.save());
-
-  await OpenFile.open(file.path);
+  final bytes = await pdf.save();
+  await saveAndOpenPdf(bytes.toList(), 'invoice_$invoiceNumber.pdf');
 }
 
 // Class to handle extra charges
@@ -596,4 +640,3 @@ class ExtraCharge {
 
   ExtraCharge({required this.reason, required this.amount});
 }
-
