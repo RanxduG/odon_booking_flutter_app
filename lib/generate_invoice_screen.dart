@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'invoice.dart' as invoice;
 import 'invoice.dart';
+import 'api_service.dart';
+import 'price_settings_screen.dart';
 class Room {
   String type;
   int quantity;
@@ -24,6 +26,7 @@ class GenerateInvoiceScreen extends StatefulWidget {
 class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _checkInController = TextEditingController();
   final TextEditingController _checkOutController = TextEditingController();
   final TextEditingController _additionalDiscountController = TextEditingController();
@@ -34,6 +37,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
     _checkInController.dispose();
     _checkOutController.dispose();
     _extraChargesController.dispose();
@@ -54,7 +58,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   double _additionalDiscount = 0.0;
   double _discountPerRoom = 1000.0; // Preset discount amount per room per night
   bool _includeDriverRoom = false;
-  static const double DRIVER_ROOM_PRICE = 2500.0;
+  double _driverRoomPrice = 2500.0;
 
   // Extra charges
   List<ExtraCharge> _extraCharges = [];
@@ -62,44 +66,13 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   // Multiple rooms selection
   List<Room> _selectedRooms = [];
 
-  // October updated prices Room prices
-
+  // Prices loaded from DB; these defaults are used until the API responds
   Map<String, Map<String, double>> _roomPrices = {
-    'Full Board': {
-      'Single': 15250.0,
-      'Double': 22500.0,
-      'Triple': 28750.0,
-      'Family': 35000.0,
-      'Family Plus': 42250.0,
-    },
-    'Half Board': {
-      'Single': 13250.0,
-      'Double': 18500.0,
-      'Triple': 22750.0,
-      'Family': 27000.0,
-      'Family Plus': 32250.0,
-    },
-    'Bed and Breakfast': {
-      'Single': 11250.0,
-      'Double': 14500.0,
-      'Triple': 16750.0,
-      'Family': 19000.0,
-      'Family Plus': 22250.0,
-    },
-    'Room Only': {
-      'Single': 10000.0,
-      'Double': 12000.0,
-      'Triple': 13000.0,
-      'Family': 14000.0,
-      'Family Plus': 16000.0,
-    },
-    'Room + Dinner': {
-      'Single': 10000.0 + (2000.0 * 2),
-      'Double': 11000.0 + (2000.0 * 2),
-      'Triple': 12000.0 + (2000.0 * 3),
-      'Family': 13000.0 + (2000.0 * 4),
-      'Family Plus': 14000.0 + (2000.0 * 5),
-    },
+    'Full Board':        {'Single': 15250, 'Double': 22500, 'Triple': 28750, 'Family': 35000, 'Family Plus': 42250},
+    'Half Board':        {'Single': 13250, 'Double': 18500, 'Triple': 22750, 'Family': 27000, 'Family Plus': 32250},
+    'Bed and Breakfast': {'Single': 11250, 'Double': 14500, 'Triple': 16750, 'Family': 19000, 'Family Plus': 22250},
+    'Room Only':         {'Single': 10000, 'Double': 12000, 'Triple': 13000, 'Family': 14000, 'Family Plus': 16000},
+    'Room + Dinner':     {'Single': 14000, 'Double': 15000, 'Triple': 18000, 'Family': 21000, 'Family Plus': 24000},
   };
 
   // Room capacity
@@ -135,7 +108,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     if (!_includeDriverRoom || _checkInDate == null || _checkOutDate == null)
       return 0.0;
     int nights = _checkOutDate!.difference(_checkInDate!).inDays;
-    return DRIVER_ROOM_PRICE * nights;
+    return _driverRoomPrice * nights;
   }
 
   // Sum of all extra charges
@@ -148,10 +121,30 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize with one empty room
     _selectedRooms.add(Room('Double', 1));
-    // Initialize with one empty extra charge field
     _extraCharges.add(ExtraCharge(reason: '', amount: 0.0));
+    _fetchPrices();
+  }
+
+  Future<void> _fetchPrices() async {
+    try {
+      final data = await ApiService().fetchPrices();
+      final packages = data['packages'] as Map<String, dynamic>;
+      setState(() {
+        _roomPrices = packages.map(
+          (pkg, rooms) => MapEntry(
+            pkg,
+            (rooms as Map<String, dynamic>).map(
+              (room, price) => MapEntry(room, (price as num).toDouble()),
+            ),
+          ),
+        );
+        _driverRoomPrice = (data['driverRoomPrice'] as num).toDouble();
+      });
+      _calculateTotal();
+    } catch (_) {
+      // Keep using the default prices already set
+    }
   }
 
   void _updateDayPackages() {
@@ -317,6 +310,19 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
         title: Text('Generate Invoice'),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.price_change),
+            tooltip: 'Edit Room Prices',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => PriceSettingsScreen()),
+              );
+              _fetchPrices(); // reload prices when returning
+            },
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -339,6 +345,17 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                     }
                     return null;
                   },
+                ),
+                SizedBox(height: 16),
+
+                // Guest Phone Number (optional)
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Guest Phone Number (Optional)',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 SizedBox(height: 16),
 
@@ -534,7 +551,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
                 // Driver Room Option
                 CheckboxListTile(
-                  title: Text('Include Driver Room (LKR ${DRIVER_ROOM_PRICE
+                  title: Text('Include Driver Room (LKR ${_driverRoomPrice
                       .toStringAsFixed(2)}/night)'),
                   value: _includeDriverRoom,
                   onChanged: (bool? value) {
@@ -1024,19 +1041,19 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
         priceBreakdown["Driver Room"] = {
           'quantity': 1,
           'nights': nights,
-          'unitPrice': DRIVER_ROOM_PRICE,
-          'totalPrice': DRIVER_ROOM_PRICE * nights
+          'unitPrice': _driverRoomPrice,
+          'totalPrice': _driverRoomPrice * nights
         };
       }
     }
 
 
     // Prepare standard fixed notes and combine with user's special notes
-    String fixedNotes = """• Once you arrive to check in, please produce the NIC of the person under whose name the booking was made.
-• If you need a driver's room, please inform on the same day you make the reservation
-• If you need any extra meal please inform the previous day
-• Meals brought from outside will not be allowed to have inside the rooms or restaurant
-• Swimming Pool will be unavailable after 8.00pm""";
+    String fixedNotes = """- Once you arrive to check in, please produce the NIC of the person under whose name the booking was made.
+- If you need a driver's room, please inform on the same day you make the reservation
+- If you need any extra meal please inform the previous day
+- Meals brought from outside will not be allowed to have inside the rooms or restaurant
+- Swimming Pool will be unavailable after 8.00pm""";
 
     String combinedNotes = _specialNotesController.text;
     if (combinedNotes.isNotEmpty) {
@@ -1046,6 +1063,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
     await invoice.generateInvoice(
       guestName: _nameController.text,
+      guestPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
       checkIn: _checkInController.text,
       checkOut: _checkOutController.text,
       numGuests: _totalGuests,

@@ -19,7 +19,6 @@ mongoose.connect(dbURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
-// Updated Booking Schema
 const bookingSchema = new mongoose.Schema({
   roomNumber: String,
   roomType: String,
@@ -27,10 +26,12 @@ const bookingSchema = new mongoose.Schema({
   extraDetails: String,
   checkIn: Date,
   checkOut: Date,
-  num_of_nights: Number, // New field to store the number of nights
-  total : String,
-  advance : String,
-  balanceMethod :String
+  num_of_nights: Number,
+  total: String,
+  advance: String,
+  balanceMethod: String,
+  guestName: String,      // ← NEW
+  guestPhone: String,     // ← NEW
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -78,7 +79,10 @@ app.post('/bookings', async (req, res) => {
     num_of_nights: req.body.num_of_nights, // Save number of nights
     total : req.body.total,
     advance : req.body.advance,
-    balanceMethod: req.body.balanceMethod
+    balanceMethod: req.body.balanceMethod,
+    guestName: req.body.guestName,
+    guestPhone: req.body.guestPhone,
+
   });
 
   try {
@@ -111,7 +115,9 @@ app.put('/bookings/:id', async (req, res) => {
       ...(num_of_nights !== undefined && { num_of_nights }), // Add num_of_nights if calculated
       total : req.body.total,
       advance : req.body.advance,
-      balanceMethod : req.body.balanceMethod
+      balanceMethod : req.body.balanceMethod,
+      guestName: req.body.guestName,
+      guestPhone: req.body.guestPhone,
     };
 
     // Update booking
@@ -256,6 +262,7 @@ app.delete('/inventory/:id', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 
 // SALARY ROUTES
@@ -433,6 +440,47 @@ app.get('/expenses/month/:year/:month', async (req, res) => {
     res.json(expenses);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// PRICE CONFIG
+
+const priceConfigSchema = new mongoose.Schema({
+  packages: { type: mongoose.Schema.Types.Mixed, required: true },
+  driverRoomPrice: { type: Number, required: true },
+}, { timestamps: true });
+
+const PriceConfig = mongoose.model('PriceConfig', priceConfigSchema);
+
+// Get prices (seeds defaults if none exist)
+app.get('/prices', async (req, res) => {
+  try {
+    let config = await PriceConfig.findOne();
+    if (!config) {
+      config = new PriceConfig({ packages: DEFAULT_PACKAGE_PRICES, driverRoomPrice: 2500 });
+      await config.save();
+    }
+    res.json(config);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Update prices
+app.put('/prices', async (req, res) => {
+  try {
+    let config = await PriceConfig.findOne();
+    if (!config) {
+      config = new PriceConfig({ packages: req.body.packages, driverRoomPrice: req.body.driverRoomPrice });
+    } else {
+      config.packages = req.body.packages;
+      config.driverRoomPrice = req.body.driverRoomPrice;
+      config.markModified('packages'); // required for Mixed type
+    }
+    await config.save();
+    res.json(config);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
