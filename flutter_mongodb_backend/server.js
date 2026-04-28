@@ -38,6 +38,7 @@ const bookingSchema = new mongoose.Schema({
   guestName: String,
   guestPhone: String,
   mealStart: String,  // 'Lunch' or 'Dinner' — first meal on arrival day for FB/HB
+  needDriver: { type: Boolean, default: false },
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -144,9 +145,11 @@ app.post('/bookings', async (req, res) => {
     guestName: req.body.guestName,
     guestPhone: req.body.guestPhone,
     mealStart: req.body.mealStart,
+    needDriver: req.body.needDriver ?? false,
   });
 
   try {
+    console.log('POST /bookings needDriver:', req.body.needDriver, '→', booking.needDriver);
     const newBooking = await booking.save();
     res.status(201).json(newBooking);
   } catch (err) {
@@ -181,13 +184,16 @@ app.put('/bookings/:id', async (req, res) => {
       guestName: req.body.guestName,
       guestPhone: req.body.guestPhone,
       mealStart: req.body.mealStart,
+      needDriver: req.body.needDriver ?? false,
     };
+
+    console.log('PUT /bookings needDriver:', req.body.needDriver, '→', updateData.needDriver);
 
     // Update booking
     const updatedBooking = await Booking.findOneAndUpdate(
       { _id: req.params.id },
-      updateData,
-      { new: true } // Return the updated document
+      { $set: updateData },
+      { new: true }
     );
 
     if (!updatedBooking) {

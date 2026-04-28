@@ -32,6 +32,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
   String _balanceMethod = '';
   String _balanceDisplay = 'N/A';
   String? _mealStart;
+  bool _needDriver = false;
 
   static const _roomTypes = ['Double', 'Triple', 'Family', 'Family Plus'];
   static const _packages = ['Full Board', 'Half Board', 'Room Only', 'BnB', 'Dinner Only'];
@@ -61,6 +62,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
     _balanceMethod = b['balanceMethod'] as String? ?? '';
     final savedMealStart = b['mealStart'] as String?;
     _mealStart = (savedMealStart == 'Lunch' || savedMealStart == 'Dinner') ? savedMealStart : null;
+    _needDriver = b['needDriver'] == true;
 
     totalController.addListener(_recalcBalance);
     advanceController.addListener(_recalcBalance);
@@ -118,6 +120,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
       'balanceMethod': _balanceMethod.isEmpty ? null : _balanceMethod,
       'guestName': guestNameController.text,
       'guestPhone': guestPhoneController.text,
+      'needDriver': _needDriver,
       if (_mealStart != null) 'mealStart': _mealStart,
       // Legacy fields
       if (!_isNewFormat) 'roomNumber': roomNumberController.text,
@@ -248,6 +251,20 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
                   activeColor: Colors.indigo,
                 ),
                 const Text('Cash', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Checkbox(
+                  value: _needDriver,
+                  activeColor: Colors.indigo,
+                  onChanged: (v) => setState(() => _needDriver = v ?? false),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.drive_eta, size: 18, color: Colors.indigo),
+                const SizedBox(width: 8),
+                const Text('Requires Driver Room', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               ],
             ),
             const SizedBox(height: 30),

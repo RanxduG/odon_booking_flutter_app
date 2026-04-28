@@ -22,6 +22,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   bool _configLoading = true;
 
   String? _mealStart;  // 'Lunch' or 'Dinner' — only for Full Board / Half Board
+  bool _needDriver = false;
 
   // Per-room selection state (room number as String, matching config)
   Set<String> _selectedRooms = {};
@@ -270,8 +271,10 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       'advance': _advanceAmountController.text,
       'guestName': _guestNameController.text,
       'guestPhone': _guestPhoneController.text,
+      'needDriver': _needDriver,
     };
 
+    print('[DEBUG] Saving booking, needDriver=$_needDriver');
     try {
       await _apiService.addBooking(newBooking);
     } catch (e) {
@@ -306,6 +309,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       _checkInDate = null;
       _checkOutDate = null;
       _numOfNights = 0;
+      _needDriver = false;
     });
   }
 
@@ -620,6 +624,30 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
 
                     // Selected rooms summary
                     _buildSelectedSummary(),
+                    const SizedBox(height: 16),
+
+                    // Driver room checkbox
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 6, offset: const Offset(0, 2))],
+                      ),
+                      child: Row(
+                        children: [
+                          Checkbox(
+                            value: _needDriver,
+                            activeColor: Colors.indigo,
+                            onChanged: (v) => setState(() => _needDriver = v ?? false),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.drive_eta, size: 18, color: Colors.indigo),
+                          const SizedBox(width: 8),
+                          const Text('Requires Driver Room', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 16),
 
                     // Extra Details

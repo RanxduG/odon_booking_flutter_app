@@ -18,6 +18,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
   List<Map<String, dynamic>> _bookingsForSelectedDay = [];
   Map<DateTime, List> _events = {};
   int _totalRoomNightsForMonth = 0;
+  bool _calendarExpanded = true;
   final ApiService _apiService = ApiService();
 
   @override
@@ -113,11 +114,34 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
       ),
       body: Column(
         children: [
-          // Month summary banner
-          _buildMonthSummary(),
+          // Collapsible: month summary + calendar
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            child: _calendarExpanded
+                ? Column(
+                    children: [
+                      _buildMonthSummary(),
+                      _buildCalendar(),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
 
-          // Calendar
-          _buildCalendar(),
+          // Toggle strip
+          GestureDetector(
+            onTap: () => setState(() => _calendarExpanded = !_calendarExpanded),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              color: Colors.indigo.shade50,
+              child: Icon(
+                _calendarExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                color: Colors.indigo,
+                size: 22,
+              ),
+            ),
+          ),
 
           // Selected day header
           if (_selectedDay != null) _buildDayHeader(),
@@ -368,6 +392,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
     final checkIn = booking['checkIn'] != null ? DateTime.parse(booking['checkIn']) : null;
     final checkOut = booking['checkOut'] != null ? DateTime.parse(booking['checkOut']) : null;
 
+    final needDriver = booking['needDriver'] == true;
     final isNewFormat = booking['rooms'] != null && (booking['rooms'] as List).isNotEmpty;
     final rooms = isNewFormat
         ? List<Map<String, dynamic>>.from((booking['rooms'] as List).map((r) => Map<String, dynamic>.from(r)))
@@ -465,6 +490,29 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                         'pax': _paxForType(booking['roomType'] as String? ?? ''),
                       }),
                     ],
+                  ),
+                ],
+
+                if (needDriver) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade300),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.drive_eta, size: 15, color: Colors.amber.shade800),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Driver Room Required',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.amber.shade900),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
 
