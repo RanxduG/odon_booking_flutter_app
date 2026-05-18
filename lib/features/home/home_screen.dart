@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'api_service.dart';
-import 'room_selection_screen.dart';
-import 'room_config_screen.dart';
-import 'view_bookings_screen.dart';
-import 'login_screen.dart';
-import ' add_inventory_item_screen.dart';
-import 'calculate_profit_page.dart';
-import 'generate_invoice_screen.dart';
-import 'expenses_screen.dart';
+import 'package:odon_booking/core/api/api_service.dart';
+import 'package:odon_booking/features/bookings/room_selection_screen.dart';
+import 'package:odon_booking/features/rooms/room_config_screen.dart';
+import 'package:odon_booking/features/bookings/view_bookings_screen.dart';
+import 'package:odon_booking/features/auth/login_screen.dart';
+import 'package:odon_booking/features/inventory/add_inventory_item_screen.dart';
+import 'package:odon_booking/features/financials/calculate_profit_page.dart';
+import 'package:odon_booking/features/invoices/generate_invoice_screen.dart';
+import 'package:odon_booking/features/financials/expenses_screen.dart';
+import 'package:odon_booking/features/guests/guests_list_screen.dart';
 
 // ── Package meta ──────────────────────────────────────────────────────────────
 
@@ -711,6 +712,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => RoomSelectionScreen()))),
             _actionTile('Bookings',      Icons.calendar_month_rounded, const Color(0xFF16A34A),
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => ViewBookingsScreen()))),
+            _actionTile('Guests',        Icons.people_alt_rounded,     const Color(0xFFDB2777),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GuestsListScreen()))),
             _actionTile('Inventory',     Icons.inventory_2_rounded,    const Color(0xFFF59E0B),
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => AddInventoryItemScreen()))),
             _actionTile('Profit',        Icons.analytics_rounded,      const Color(0xFF8B5CF6),
