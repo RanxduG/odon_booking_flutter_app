@@ -7,6 +7,8 @@ import 'edit_booking_screen.dart';
 import 'future_bookings_screen.dart';
 import 'past_bookings_screen.dart';
 import 'selected_day_booking.dart';
+import 'package:odon_booking/features/bookings/widgets/booking_flags.dart';
+import 'package:odon_booking/features/bookings/widgets/extra_charges.dart';
 
 class ViewBookingsScreen extends StatefulWidget {
   @override
@@ -415,6 +417,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
     final guestPhone = booking['guestPhone'] as String? ?? '';
     final package = booking['package'] as String? ?? 'N/A';
     final extraDetails = (booking['extraDetails'] as String?)?.trim() ?? '';
+    final extraCharges = extraChargesOf(booking);
     final numOfNights = booking['num_of_nights']?.toString() ?? 'N/A';
     final total = booking['total'] as String? ?? '';
     final advance = booking['advance'] as String? ?? '';
@@ -546,6 +549,8 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                   ),
                 ],
 
+                BookingFlagBadges(booking: booking),
+
                 if (needDriver) ...[
                   const SizedBox(height: 8),
                   Container(
@@ -608,6 +613,11 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                   ),
                 ],
 
+                if (extraCharges.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ExtraChargesSummary(charges: extraCharges),
+                ],
+
                 // ── Extra details ─────────────────────────────────────────────
                 if (extraDetails.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -664,7 +674,8 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
     }
     // Only worth showing the editor when it is a genuine later edit.
     final updatedAt = DateTime.tryParse(booking['updatedAt'] as String? ?? '');
-    final createdAt = DateTime.tryParse(booking['createdAt'] as String? ?? '');
+    final createdAt = DateTime.tryParse(booking['createdAt'] as String? ?? '') ??
+        _createdFromId(booking['_id']);
     final wasEdited = updatedAt != null &&
         (createdAt == null || updatedAt.difference(createdAt).inSeconds > 5);
     if (updatedBy.isNotEmpty && wasEdited) {
@@ -689,6 +700,17 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
         ],
       ),
     );
+  }
+
+  /// When a record was created, read from its Mongo ObjectId: the first 8 hex
+  /// characters are the creation time in seconds. Covers bookings saved before
+  /// createdAt was stored, which otherwise all looked edited.
+  DateTime? _createdFromId(dynamic id) {
+    final hex = id?.toString() ?? '';
+    if (hex.length < 8) return null;
+    final seconds = int.tryParse(hex.substring(0, 8), radix: 16);
+    if (seconds == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
   }
 
   // Shows whether the selected day is the check-in night or a later night of

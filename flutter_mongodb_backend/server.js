@@ -6,6 +6,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const compression = require('compression');
 const {
   ENFORCE,
   PROJECT_ID,
@@ -21,6 +22,10 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
+// Gzip every JSON response the client accepts it for. The bookings list is
+// ~500 KB and the home screen re-reads it every 30 s; compressed it is under
+// 100 KB. Browsers and Dart's HttpClient decompress it automatically.
+app.use(compression());
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -201,14 +206,36 @@ const bookingSchema = new mongoose.Schema({
   guestPhone: String,
   mealStart: String,  // 'Lunch' or 'Dinner' — first meal on arrival day for FB/HB
   needDriver: { type: Boolean, default: false },
+  needKiriPidu: { type: Boolean, default: false },
+  // Arriving before the 2 PM check-in / leaving after the 11 AM check-out.
+  // The times are "HH:mm" and optional: staff often know only that it is early.
+  earlyCheckIn: { type: Boolean, default: false },
+  earlyCheckInTime: String,
+  lateCheckOut: { type: Boolean, default: false },
+  lateCheckOutTime: String,
   // Head count. The rooms already imply a capacity (Double = 2, Family = 4 …)
   // and that is what numAdults defaults to, but the front desk can correct it.
   // Kids are recorded separately because they are never counted when picking a
   // room — tracking them is the only way to notice a "kid" who arrives adult.
   numAdults: Number,
   numKids: Number,
+  // Itemised extras (late check-out fee, extra dinner …). The booking's total
+  // already includes them; this keeps the reason next to each amount.
+  extraCharges: [{
+    _id: false,
+    reason: String,
+    amount: Number,
+  }],
   ...auditFields,     // createdBy / updatedBy — stamped from the verified token
+  // Set by createStamp. Without it in the schema Mongoose dropped the value, so
+  // every booking looked edited (updatedAt vs a missing createdAt).
+  createdAt: { type: Date, default: null },
 });
+
+// The calendar and range screens filter on check-in; the guest screens look
+// bookings up by phone (and GET /guests joins on it).
+bookingSchema.index({ checkIn: 1 });
+bookingSchema.index({ guestPhone: 1 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
 
@@ -246,6 +273,35 @@ function headCount(body) {
   return {
     numAdults: Number.isFinite(adults) && adults >= 0 ? adults : roomCapacity(body),
     numKids: Number.isFinite(kids) && kids >= 0 ? kids : 0,
+  };
+}
+
+// Cleans the extra charges sent by the app: drops blank rows and anything
+// that is not a number. Returns undefined when the field was not sent, so an
+// older client editing a booking leaves the stored charges alone.
+function cleanExtraCharges(list) {
+  if (!Array.isArray(list)) return undefined;
+  return list
+    .map((c) => ({
+      reason: String((c && c.reason) ?? '').trim(),
+      amount: Number(c && c.amount),
+    }))
+    .filter((c) => c.reason || (Number.isFinite(c.amount) && c.amount !== 0))
+    .map((c) => ({ reason: c.reason, amount: Number.isFinite(c.amount) ? c.amount : 0 }));
+}
+
+// Early check-in / late check-out fields. A time is kept only while its
+// toggle is on and only in "HH:mm" form; anything else is stored as null.
+function stayTimes(body) {
+  const clean = (on, t) =>
+    on && typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : null;
+  const early = body.earlyCheckIn === true;
+  const late = body.lateCheckOut === true;
+  return {
+    earlyCheckIn: early,
+    earlyCheckInTime: clean(early, body.earlyCheckInTime),
+    lateCheckOut: late,
+    lateCheckOutTime: clean(late, body.lateCheckOutTime),
   };
 }
 
@@ -340,7 +396,9 @@ app.get('/bookings', async (req, res) => {
       return res.json(cached);
     }
 
-    const bookings = await Booking.find();
+    // lean(): plain objects serialise to the same JSON without building a
+    // full Mongoose document for each of the ~1,300 bookings.
+    const bookings = await Booking.find().lean();
     res.set('X-Cache', cache.enabled() ? 'MISS' : 'BYPASS');
     res.json(bookings);
     // After the response: a slow cache write must not delay the caller, and if
@@ -360,6 +418,9 @@ const salarySchema = new mongoose.Schema({
   ...auditFields,
 });
 
+// Monthly salary reports query by date.
+salarySchema.index({ date: 1 });
+
 const Salary = mongoose.model('Salary', salarySchema);
 
 // Expense Schema
@@ -372,6 +433,9 @@ const expenseSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   ...auditFields,
 });
+
+// Monthly expense reports query by date.
+expenseSchema.index({ date: 1 });
 
 const Expense = mongoose.model('Expense', expenseSchema);
 // Routes
@@ -395,14 +459,21 @@ app.post('/bookings', requireUser, async (req, res) => {
     guestPhone: req.body.guestPhone,
     mealStart: req.body.mealStart,
     needDriver: req.body.needDriver ?? false,
+    needKiriPidu: req.body.needKiriPidu ?? false,
+    ...stayTimes(req.body),
     ...headCount(req.body),
+    extraCharges: cleanExtraCharges(req.body.extraCharges) ?? [],
   });
 
   try {
     console.log('POST /bookings needDriver:', req.body.needDriver, '→', booking.needDriver);
     const newBooking = await booking.save();
-    await upsertGuest(req.body.guestName, req.body.guestPhone);
-    await cache.invalidateBookings();
+    // Independent of each other, so run them side by side. Both finish before
+    // the reply, so the next read never sees a stale cached list.
+    await Promise.all([
+      upsertGuest(req.body.guestName, req.body.guestPhone),
+      cache.invalidateBookings(),
+    ]);
     res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -437,7 +508,12 @@ app.put('/bookings/:id', requireUser, async (req, res) => {
       guestPhone: req.body.guestPhone,
       mealStart: req.body.mealStart,
       needDriver: req.body.needDriver ?? false,
+      needKiriPidu: req.body.needKiriPidu ?? false,
+      ...stayTimes(req.body),
       ...headCount(req.body),
+      ...(Array.isArray(req.body.extraCharges) && {
+        extraCharges: cleanExtraCharges(req.body.extraCharges),
+      }),
       // Records who last touched it; createdBy is deliberately left alone.
       ...updateStamp(req),
     };
@@ -455,8 +531,12 @@ app.put('/bookings/:id', requireUser, async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    await upsertGuest(req.body.guestName, req.body.guestPhone);
-    await cache.invalidateBookings();
+    // Independent of each other, so run them side by side. Both finish before
+    // the reply, so the next read never sees a stale cached list.
+    await Promise.all([
+      upsertGuest(req.body.guestName, req.body.guestPhone),
+      cache.invalidateBookings(),
+    ]);
     res.json(updatedBooking);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -544,7 +624,8 @@ app.get('/guests/search', async (req, res) => {
       $or: [{ name: regex }, { phone: regex }],
     })
       .limit(10)
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .lean();
     res.json(guests);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -565,7 +646,7 @@ app.get('/guests/:phone', async (req, res) => {
 // Get all bookings for a guest (sorted most recent first)
 app.get('/guests/:phone/bookings', async (req, res) => {
   try {
-    const bookings = await Booking.find({ guestPhone: req.params.phone }).sort({ checkIn: -1 });
+    const bookings = await Booking.find({ guestPhone: req.params.phone }).sort({ checkIn: -1 }).lean();
     res.json(bookings);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -601,7 +682,7 @@ const Inventory = mongoose.model('Inventory', inventorySchema);
 // Get all inventory items
 app.get('/inventory', async (req, res) => {
   try {
-    const items = await Inventory.find();
+    const items = await Inventory.find().lean();
     res.json(items);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -692,7 +773,7 @@ app.delete('/inventory/:id', requireUser, async (req, res) => {
 // Get all salary records
 app.get('/salaries', async (req, res) => {
   try {
-    const salaries = await Salary.find().sort({ createdAt: -1 });
+    const salaries = await Salary.find().sort({ createdAt: -1 }).lean();
     res.json(salaries);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -771,7 +852,7 @@ app.delete('/salaries/:id', requireUser, async (req, res) => {
 // Get all expense records
 app.get('/expenses', async (req, res) => {
   try {
-    const expenses = await Expense.find().sort({ createdAt: -1 });
+    const expenses = await Expense.find().sort({ createdAt: -1 }).lean();
     res.json(expenses);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -861,7 +942,7 @@ app.get('/expenses/month/:year/:month', async (req, res) => {
         $gte: startDate,
         $lte: endDate
       }
-    }).sort({ date: -1 });
+    }).sort({ date: -1 }).lean();
 
     res.json(expenses);
   } catch (err) {
@@ -922,7 +1003,7 @@ app.get('/salaries/month/:year/:month', async (req, res) => {
         $gte: startDate,
         $lte: endDate
       }
-    }).sort({ date: -1 });
+    }).sort({ date: -1 }).lean();
 
     res.json(salaries);
   } catch (err) {
